@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VinSnap — Batch Processing</title>
+<link rel="icon" href="data:,">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f6fa;--card:#fff;--card2:#f0f2f8;--border:#e2e5f0;
+  --accent:#6366f1;--accent2:#8b5cf6;--accent3:#06b6d4;
+  --text:#1a1d2e;--dim:#6b7280;--dim2:#4b5563;
+  --green:#059669;--red:#dc2626;
+  --r:16px;--rs:10px;--rx:7px;
+  --sh:0 4px 24px rgba(99,102,241,.10);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* header */
+.hdr{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.brand{font-weight:700;font-size:1.1rem;text-decoration:none;color:var(--text)}
+.brand span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hnav{display:flex;align-items:center;gap:10px}
+.back-btn{padding:6px 14px;border-radius:var(--rx);border:1.5px solid var(--border);background:#fff;color:var(--dim2);font-family:'Outfit',sans-serif;font-size:.84rem;font-weight:500;cursor:pointer;text-decoration:none;transition:.2s}
+.back-btn:hover{border-color:var(--accent);color:var(--accent)}
+.auth-btn{padding:7px 16px;border-radius:var(--rx);border:none;font-family:'Outfit',sans-serif;font-size:.84rem;font-weight:600;cursor:pointer;transition:.2s}
+.sign-in{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.sign-out{background:var(--card2);color:var(--dim2)}
+.ubadge{background:var(--card2);color:var(--dim2);font-size:.76rem;font-weight:600;padding:4px 10px;border-radius:20px}
+
+/* page */
+.pg{max-width:860px;margin:0 auto;padding:28px 20px 80px}
+.ptitle{font-size:1.5rem;font-weight:800;margin-bottom:4px}
+.ptitle span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.psub{color:var(--dim);font-size:.9rem;margin-bottom:24px}
+
+/* card */
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:22px;margin-bottom:16px;box-shadow:var(--sh)}
+.ctitle{font-size:.93rem;font-weight:700;margin-bottom:14px}
+
+/* count banner */
+.cbanner{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-radius:var(--rs);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.cbanner.hidden{display:none}
+.cnum{font-size:1.5rem;font-weight:800}
+.clbl{font-size:.82rem;opacity:.9}
+
+/* upload */
+.uzone{border:2px dashed var(--border);border-radius:var(--rs);padding:28px;text-align:center;cursor:pointer;transition:.2s;background:var(--card2);position:relative}
+.uzone:hover,.uzone.drag-over{border-color:var(--accent);background:#f0f0ff}
+.uzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.uico{font-size:2rem;margin-bottom:8px}
+.utxt{font-weight:600;color:var(--dim2);font-size:.9rem}
+.uhint{font-size:.76rem;color:var(--dim);margin-top:4px}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px;margin-top:14px}
+.titem{position:relative;aspect-ratio:1;border-radius:var(--rx);overflow:hidden;border:2px solid var(--border)}
+.titem img{width:100%;height:100%;object-fit:cover}
+.tremove{position:absolute;top:4px;right:4px;background:rgba(220,38,38,.85);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:.68rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.tidx{position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.55);color:#fff;font-size:.6rem;font-weight:700;padding:2px 5px;border-radius:4px}
+
+/* form */
+.lbl{font-size:.82rem;font-weight:600;color:var(--dim2);margin-bottom:5px;display:block}
+.sel,.inp{width:100%;padding:10px 14px;border-radius:var(--rx);border:1.5px solid var(--border);font-family:'Outfit',sans-serif;font-size:.87rem;background:#fff;color:var(--text);transition:.2s;outline:none}
+.sel:focus,.inp:focus{border-color:var(--accent)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:540px){.frow{grid-template-columns:1fr}}
+.fg{margin-bottom:14px}
+
+/* type checkboxes */
+.tygrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.tygrid{grid-template-columns:1fr}}
+.tycb{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:var(--rx);border:2px solid var(--border);cursor:pointer;transition:.2s;background:#fff;user-select:none}
+.tycb:hover{border-color:var(--accent)}
+.tycb.on{border-color:var(--accent);background:rgba(99,102,241,.06)}
+.tycb input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer;flex-shrink:0}
+.tycb-lbl{font-weight:600;font-size:.87rem}
+.tycb-sub{font-size:.72rem;color:var(--dim);margin-top:1px}
+
+/* mode */
+.mrow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mcard{border:2px solid var(--border);border-radius:var(--rs);padding:14px 16px;cursor:pointer;transition:.2s;background:#fff}
+.mcard:hover{border-color:var(--accent)}
+.mcard.on{border-color:var(--accent);background:rgba(99,102,241,.06)}
+.mico{font-size:1.3rem;margin-bottom:4px}
+.mlbl{font-weight:700;font-size:.9rem;margin-bottom:3px}
+.msub{font-size:.75rem;color:var(--dim);line-height:1.4}
+
+/* custom panel */
+#customPanel{display:none;margin-top:20px;border-top:1px solid var(--border);padding-top:4px}
+.sec-lbl{font-size:13px;font-weight:700;color:var(--dim2);padding:14px 20px 6px;letter-spacing:.02em}
+
+/* submit */
+.sbtn{width:100%;padding:15px;border-radius:var(--rs);border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Outfit',sans-serif;font-size:.97rem;font-weight:700;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.sbtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px rgba(99,102,241,.3)}
+.sbtn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+
+/* success */
+#successPanel{display:none}
+.scrd{background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:2px solid #10b981;border-radius:var(--r);padding:32px;text-align:center}
+.sico{font-size:3rem;margin-bottom:12px}
+.stitle{font-size:1.4rem;font-weight:800;color:#065f46;margin-bottom:8px}
+.ssub{color:#047857;font-size:.92rem;line-height:1.7}
+.sjob{background:#fff;border-radius:var(--rx);padding:8px 14px;margin-top:14px;font-size:.76rem;color:var(--dim);font-family:monospace}
+.newbtn{margin-top:18px;padding:11px 26px;border-radius:var(--rx);border:2px solid var(--accent);background:#fff;color:var(--accent);font-family:'Outfit',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer;transition:.2s}
+.newbtn:hover{background:var(--accent);color:#fff}
+
+/* modal */
+.moverlay{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center}
+.moverlay.open{display:flex}
+.mcrd{background:#fff;border-radius:var(--r);padding:32px;width:min(420px,94vw);position:relative;box-shadow:0 24px 60px rgba(0,0,0,.18)}
+.mxbtn{position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--dim)}
+.mtitle{font-size:1.1rem;font-weight:800;margin-bottom:18px}
+.minp{width:100%;padding:10px 14px;border-radius:var(--rx);border:1.5px solid var(--border);font-family:'Outfit',sans-serif;font-size:.9rem;margin-bottom:10px;outline:none;transition:.2s}
+.minp:focus{border-color:var(--accent)}
+.mbtn{width:100%;padding:11px;border-radius:var(--rx);border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Outfit',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer}
+.mmsg{font-size:.82rem;margin-top:10px;min-height:18px}
+.mmsg.ok{color:var(--green)}
+.mmsg.err{color:var(--red)}
+.mswitch{font-size:.82rem;color:var(--dim);margin-top:14px;text-align:center}
+.mswitch a{color:var(--accent);cursor:pointer;font-weight:600}
+
+/* toast */
+.toast-el{position:fixed;bottom:24px;right:24px;background:#1a1d2e;color:#fff;padding:12px 20px;border-radius:var(--rx);font-size:.82rem;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:.3s;max-width:300px}
+.toast-el.show{transform:translateY(0);opacity:1}
+
+/* avatar + location CSS from index_6 */
+.av-country-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:14px 20px 10px}
+.av-country-tab{font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;transition:.2s;background:var(--card2)}
+.av-country-tab:hover{border-color:var(--accent)}
+.av-country-tab.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.avatar-grid-wrap{display:none;padding:0 20px 16px}
+.avatar-grid-wrap.on{display:block}
+.av-dyn-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border:2px solid var(--accent);border-radius:var(--radius-sm);background:rgba(99,102,241,.07);cursor:pointer;margin-bottom:10px;transition:.2s}
+.av-dyn-card:not(.on){border-color:var(--border);background:transparent}
+.av-dyn-card:not(.on):hover{border-color:var(--accent2)}
+.av-dyn-ico{font-size:22px;flex-shrink:0}
+.av-dyn-text{flex:1}
+.av-dyn-title{font-size:13px;font-weight:600}
+.av-dyn-sub{font-size:11px;color:var(--dim)}
+.av-dyn-check{width:20px;height:20px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;opacity:0;transition:.2s}
+.av-dyn-card.on .av-dyn-check{opacity:1}
+.avatar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:340px;overflow-y:auto;padding-right:4px}
+.avatar-grid::-webkit-scrollbar{width:4px}
+.avatar-grid::-webkit-scrollbar-track{background:transparent}
+.avatar-grid::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.avatar-grid::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+.av-card{border:2px solid var(--border);border-radius:var(--radius-sm);padding:10px 8px;text-align:center;cursor:pointer;transition:.2s;opacity:1}
+.av-card:hover:not(.disabled){border-color:var(--accent2)}
+.av-card.on{border-color:var(--accent);background:rgba(99,102,241,.08)}
+.av-card.disabled{opacity:.35;pointer-events:none;filter:grayscale(1)}
+.av-thumb{width:44px;height:44px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:20px;border:2px solid var(--border)}
+.av-card.on .av-thumb{border-color:var(--accent)}
+.av-name{font-size:12px;font-weight:500}
+.av-gender{font-size:10px;color:var(--dim);margin-top:2px}
+.av-cat-note{font-size:11px;color:var(--accent2);padding:8px 20px;display:none;align-items:center;gap:6px}
+.av-cat-note.on{display:flex}
+
+/* ── LOCATION GRID ── */
+.loc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 20px 16px}
+.loc-card{border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 8px;text-align:center;cursor:pointer;transition:.2s;font-size:12px}
+.loc-card:hover{border-color:var(--accent2);background:rgba(99,102,241,.04)}
+.loc-card.on{border-color:var(--accent);background:rgba(99,102,241,.08);font-weight:600}
+.loc-card-ico{font-size:18px;margin-bottom:4px}
+.loc-card-name{font-size:11px;font-weight:500}
+.loc-card.recommended{border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.04)}
+.loc-card.fashion-loc{border-color:rgba(234,88,12,.35);background:rgba(234,88,12,.04)}
+.loc-card.fashion-loc:hover{border-color:rgba(234,88,12,.7);background:rgba(234,88,12,.08)}
+.loc-card.fashion-loc.on{border-color:rgb(234,88,12);background:rgba(234,88,12,.12);font-weight:600}
+.loc-card.fashion-loc .loc-card-name::after{content:' ✦';font-size:8px;color:rgb(234,88,12);vertical-align:super}
+
+/* ── ANALYSE BUTTON ── */
+
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <a class="brand" href="index_6.html"><span>VinSnap</span></a>
+  <div class="hnav">
+    <a href="index_6.html" class="back-btn">← Standard Mode</a>
+    <span class="ubadge" id="ubadge">Sign in to use</span>
+    <button class="auth-btn sign-in" id="authBtn" onclick="openModal()">Sign In</button>
+  </div>
+</header>
+
+<main class="pg" id="mainForm">
+  <div class="ptitle">⚡ <span>Batch Processing</span></div>
+  <div class="psub">Upload up to 10 product images — generated images will be emailed to you in ~30 minutes.</div>
+
+  <div class="cbanner hidden" id="countBanner">
+    <div><div class="cnum" id="countNum">0</div><div class="clbl">images will be generated</div></div>
+    <div style="text-align:right;font-size:.82rem;opacity:.85" id="countBreak"></div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="card">
+    <div class="ctitle">📁 Upload Product Images</div>
+    <div class="uzone" id="uzone"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="onDrop(event)">
+      <input type="file" id="fileInput" accept="image/*" multiple onchange="onFilePick(event)">
+      <div class="uico">🖼️</div>
+      <div class="utxt">Drag & drop or click to browse</div>
+      <div class="uhint">Up to 10 images · JPG PNG WebP · Max 10MB each</div>
+    </div>
+    <div class="tgrid" id="thumbGrid"></div>
+  </div>
+
+  <!-- PRODUCT DETAILS -->
+  <div class="card">
+    <div class="ctitle">🏷️ Product Details</div>
+    <div class="fg">
+      <label class="lbl">Product Name</label>
+      <input class="inp" id="productName" type="text" placeholder="e.g. Banarasi Silk Saree Collection" oninput="checkReady()">
+    </div>
+    <div class="frow">
+      <div class="fg" style="margin:0">
+        <label class="lbl">Category</label>
+        <select class="sel" id="catSel" onchange="onCatChange()">
+          <option value="">Select category…</option>
+          <option value="womens_fashion">👗 Women's Fashion</option>
+          <option value="mens_fashion">👔 Men's Fashion</option>
+          <option value="kids_fashion">👶 Kids' Fashion</option>
+          <option value="footwear">👠 Footwear</option>
+          <option value="jewellery">💍 Jewellery</option>
+          <option value="accessories">👜 Accessories</option>
+          <option value="home_kitchen">🍳 Home & Kitchen</option>
+          <option value="home_decor">🏠 Home Décor</option>
+          <option value="beauty">💄 Beauty</option>
+          <option value="electronics">📱 Electronics</option>
+          <option value="health">🏥 Health</option>
+          <option value="toys">🧸 Toys</option>
+          <option value="stationery">✏️ Stationery</option>
+          <option value="other">📦 Other</option>
+        </select>
+      </div>
+      <div class="fg" style="margin:0">
+        <label class="lbl">Subcategory</label>
+        <select class="sel" id="subSel" onchange="checkReady()">
+          <option value="">Select subcategory…</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMAGE TYPES -->
+  <div class="card">
+    <div class="ctitle">🖼️ Select Image Types</div>
+    <div class="tygrid">
+      <label class="tycb on"><input type="checkbox" value="hero" checked onchange="onTypeTick(this)"><div><div class="tycb-lbl">🎯 Hero</div><div class="tycb-sub">Clean product shot</div></div></label>
+      <label class="tycb on"><input type="checkbox" value="lifestyle1" checked onchange="onTypeTick(this)"><div><div class="tycb-lbl">✨ Lifestyle 1</div><div class="tycb-sub">Front / primary pose</div></div></label>
+      <label class="tycb on"><input type="checkbox" value="lifestyle2" checked onchange="onTypeTick(this)"><div><div class="tycb-lbl">🌿 Lifestyle 2</div><div class="tycb-sub">Side / alternate angle</div></div></label>
+      <label class="tycb on"><input type="checkbox" value="lifestyle3" checked onchange="onTypeTick(this)"><div><div class="tycb-lbl">🔍 Lifestyle 3</div><div class="tycb-sub">Close-up / detail</div></div></label>
+    </div>
+  </div>
+
+  <!-- MODE -->
+  <div class="card">
+    <div class="ctitle">⚙️ Generation Mode</div>
+    <div class="mrow">
+      <div class="mcard on" id="modeDyn" onclick="setMode('dynamic')">
+        <div class="mico">⚡</div><div class="mlbl">Dynamic</div>
+        <div class="msub">AI auto-selects avatar & location from your category</div>
+      </div>
+      <div class="mcard" id="modeCus" onclick="setMode('custom')">
+        <div class="mico">🎨</div><div class="mlbl">Custom</div>
+        <div class="msub">Pick avatar & location — applied across all images</div>
+      </div>
+    </div>
+    <div id="customPanel">
+      <div class="sec-lbl">🧑 Model Avatar</div>
+<div class="av-country-tabs" id="avCountryTabs">
+    <div class="av-country-tab on" data-country="india" onclick="selectCountry(this)">🇮🇳 India</div>
+    <div class="av-country-tab" data-country="american" onclick="selectCountry(this)">🇺🇸 USA</div>
+    <div class="av-country-tab" data-country="chinese" onclick="selectCountry(this)">🇨🇳 China</div>
+    <div class="av-country-tab" data-country="japanese" onclick="selectCountry(this)">🇯🇵 Japan</div>
+    <div class="av-country-tab" data-country="korean" onclick="selectCountry(this)">🇰🇷 Korea</div>
+    <div class="av-country-tab" data-country="european" onclick="selectCountry(this)">🇪🇺 Europe</div>
+    <div class="av-country-tab" data-country="arabic" onclick="selectCountry(this)">🇦🇪 Arabic</div>
+    <div class="av-country-tab" data-country="australian" onclick="selectCountry(this)">🇦🇺 Australia</div>
+    <div class="av-country-tab" data-country="brazilian" onclick="selectCountry(this)">🇧🇷 Brazil</div>
+    <div class="av-country-tab" data-country="african" onclick="selectCountry(this)">🌍 Africa</div>
+    <div class="av-country-tab" data-country="global" onclick="selectCountry(this)">🌐 Global</div>
+  </div>
+
+  <!-- INDIA -->
+  <div id="avGrid-india" class="avatar-grid-wrap on">
+    <div class="av-dyn-card on" id="avDyn-india" data-avatar="dynamic" data-country="india" onclick="selectAvatar(this)">
+      <span class="av-dyn-ico">🤖</span>
+      <div class="av-dyn-text"><div class="av-dyn-title">Dynamic AI — Indian</div><div class="av-dyn-sub">AI generates a natural Indian face each run</div></div>
+      <div class="av-dyn-check">✓</div>
+    </div>
+    <div class="avatar-grid">
+      <!-- ── Existing avatars ── -->
+      <div class="av-card" data-avatar="avatar_rakesh" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Rakesh</div><div class="av-gender">Male · 30s</div></div>
+      <div class="av-card" data-avatar="avatar_raj" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Raj</div><div class="av-gender">Male · 34</div></div>
+      <div class="av-card" data-avatar="avatar_arjun" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Arjun</div><div class="av-gender">Male · 28</div></div>
+      <div class="av-card" data-avatar="avatar_rena" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Rena</div><div class="av-gender">Female · 27</div></div>
+      <div class="av-card" data-avatar="avatar_priya" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Priya</div><div class="av-gender">Female · 30</div></div>
+      <div class="av-card" data-avatar="avatar_1" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Men (India)</div><div class="av-gender">Male · 30s</div></div>
+      <div class="av-card" data-avatar="avatar_2" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Women (India)</div><div class="av-gender">Female · late 20s</div></div>
+      <div class="av-card" data-avatar="avatar_3" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧒</span></div><div class="av-name">Boy (India)</div><div class="av-gender">Male · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="avatar_4" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧒</span></div><div class="av-name">Girl (India)</div><div class="av-gender">Female · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="avatar_5" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Boy (India)</div><div class="av-gender">Male · 8-12 mo</div></div>
+      <div class="av-card" data-avatar="avatar_6" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Girl (India)</div><div class="av-gender">Female · 8-12 mo</div></div>
+      <div class="av-card" data-avatar="avatar_7" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧒</span></div><div class="av-name">Old Man (India)</div><div class="av-gender">Male · 65-70 yrs</div></div>
+      <div class="av-card" data-avatar="avatar_8" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧒</span></div><div class="av-name">Old Woman (India)</div><div class="av-gender">Female · 65-70 yrs</div></div>
+      <!-- ── New female adults (30) ── -->
+      <div class="av-card" data-avatar="in_f_01" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Meera</div><div class="av-gender">Female · 22</div></div>
+      <div class="av-card" data-avatar="in_f_02" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Priya</div><div class="av-gender">Female · 24</div></div>
+      <div class="av-card" data-avatar="in_f_03" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Ananya</div><div class="av-gender">Female · 21</div></div>
+      <div class="av-card" data-avatar="in_f_04" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Riya</div><div class="av-gender">Female · 23</div></div>
+      <div class="av-card" data-avatar="in_f_05" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Ishika</div><div class="av-gender">Female · 25</div></div>
+      <div class="av-card" data-avatar="in_f_06" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Kavya</div><div class="av-gender">Female · 20</div></div>
+      <div class="av-card" data-avatar="in_f_07" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Sonali</div><div class="av-gender">Female · 26</div></div>
+      <div class="av-card" data-avatar="in_f_08" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Priyanka</div><div class="av-gender">Female · 27</div></div>
+      <div class="av-card" data-avatar="in_f_09" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Divya</div><div class="av-gender">Female · 22</div></div>
+      <div class="av-card" data-avatar="in_f_10" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Aishwarya</div><div class="av-gender">Female · 24</div></div>
+      <div class="av-card" data-avatar="in_f_11" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Harini</div><div class="av-gender">Female · 21</div></div>
+      <div class="av-card" data-avatar="in_f_12" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Shreya</div><div class="av-gender">Female · 23</div></div>
+      <div class="av-card" data-avatar="in_f_13" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Nandini</div><div class="av-gender">Female · 25</div></div>
+      <div class="av-card" data-avatar="in_f_14" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Pooja</div><div class="av-gender">Female · 28</div></div>
+      <div class="av-card" data-avatar="in_f_15" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Tanvi</div><div class="av-gender">Female · 20</div></div>
+      <div class="av-card" data-avatar="in_f_16" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Simran</div><div class="av-gender">Female · 22</div></div>
+      <div class="av-card" data-avatar="in_f_17" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Lakshmi</div><div class="av-gender">Female · 26</div></div>
+      <div class="av-card" data-avatar="in_f_18" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Aarushi</div><div class="av-gender">Female · 21</div></div>
+      <div class="av-card" data-avatar="in_f_19" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Trisha</div><div class="av-gender">Female · 24</div></div>
+      <div class="av-card" data-avatar="in_f_20" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Roshni</div><div class="av-gender">Female · 27</div></div>
+      <div class="av-card" data-avatar="in_f_21" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Swathi</div><div class="av-gender">Female · 23</div></div>
+      <div class="av-card" data-avatar="in_f_22" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Nisha</div><div class="av-gender">Female · 25</div></div>
+      <div class="av-card" data-avatar="in_f_23" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Chandni</div><div class="av-gender">Female · 20</div></div>
+      <div class="av-card" data-avatar="in_f_24" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Deepa</div><div class="av-gender">Female · 28</div></div>
+      <div class="av-card" data-avatar="in_f_25" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Zara</div><div class="av-gender">Female · 22</div></div>
+      <div class="av-card" data-avatar="in_f_26" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Bhavna</div><div class="av-gender">Female · 26</div></div>
+      <div class="av-card" data-avatar="in_f_27" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Aditi</div><div class="av-gender">Female · 23</div></div>
+      <div class="av-card" data-avatar="in_f_28" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Parvati</div><div class="av-gender">Female · 27</div></div>
+      <div class="av-card" data-avatar="in_f_29" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Ritika</div><div class="av-gender">Female · 24</div></div>
+      <div class="av-card" data-avatar="in_f_30" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Geeta</div><div class="av-gender">Female · 21</div></div>
+      <!-- ── South Indian featured females (8) ── -->
+      <div class="av-card" data-avatar="si_f_01" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Meenakshi</div><div class="av-gender">Female · 24 · South Indian</div></div>
+      <div class="av-card" data-avatar="si_f_02" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Kavitha</div><div class="av-gender">Female · 22 · South Indian</div></div>
+      <div class="av-card" data-avatar="si_f_03" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Nithila</div><div class="av-gender">Female · 25 · South Indian</div></div>
+      <div class="av-card" data-avatar="si_f_04" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Saranya</div><div class="av-gender">Female · 26 · South Indian</div></div>
+      <div class="av-card" data-avatar="si_f_05" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Priyadarshini</div><div class="av-gender">Female · 23 · South Indian</div></div>
+      <div class="av-card" data-avatar="si_f_06" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Varalakshmi</div><div class="av-gender">Female · 27 · South Indian</div></div>
+      <div class="av-card" data-avatar="si_f_07" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Keerthana</div><div class="av-gender">Female · 21 · South Indian</div></div>
+      <div class="av-card" data-avatar="si_f_08" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Dharshini</div><div class="av-gender">Female · 28 · South Indian</div></div>
+      <!-- ── New male adults (10) ── -->
+      <div class="av-card" data-avatar="in_m_01" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Arjun</div><div class="av-gender">Male · 24</div></div>
+      <div class="av-card" data-avatar="in_m_02" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Rohit</div><div class="av-gender">Male · 26</div></div>
+      <div class="av-card" data-avatar="in_m_03" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Karan</div><div class="av-gender">Male · 22</div></div>
+      <div class="av-card" data-avatar="in_m_04" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Vishnu</div><div class="av-gender">Male · 25</div></div>
+      <div class="av-card" data-avatar="in_m_05" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Siddharth</div><div class="av-gender">Male · 28</div></div>
+      <div class="av-card" data-avatar="in_m_06" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Raj</div><div class="av-gender">Male · 23</div></div>
+      <div class="av-card" data-avatar="in_m_07" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Dev</div><div class="av-gender">Male · 21</div></div>
+      <div class="av-card" data-avatar="in_m_08" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Aakash</div><div class="av-gender">Male · 27</div></div>
+      <div class="av-card" data-avatar="in_m_09" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Nikhil</div><div class="av-gender">Male · 20</div></div>
+      <div class="av-card" data-avatar="in_m_10" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Akshay</div><div class="av-gender">Male · 26</div></div>
+      <!-- ── New boys (5) ── -->
+      <div class="av-card" data-avatar="in_boy_01" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧒</span></div><div class="av-name">Vivaan</div><div class="av-gender">Male · 8 yrs</div></div>
+      <div class="av-card" data-avatar="in_boy_02" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧒</span></div><div class="av-name">Aarav</div><div class="av-gender">Male · 10 yrs</div></div>
+      <div class="av-card" data-avatar="in_boy_03" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧒</span></div><div class="av-name">Rohan</div><div class="av-gender">Male · 12 yrs</div></div>
+      <div class="av-card" data-avatar="in_boy_04" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧒</span></div><div class="av-name">Kabir</div><div class="av-gender">Male · 7 yrs</div></div>
+      <div class="av-card" data-avatar="in_boy_05" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧒</span></div><div class="av-name">Aryan</div><div class="av-gender">Male · 9 yrs</div></div>
+      <!-- ── New girls (5) ── -->
+      <div class="av-card" data-avatar="in_girl_01" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Anvi</div><div class="av-gender">Female · 8 yrs</div></div>
+      <div class="av-card" data-avatar="in_girl_02" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Saanvi</div><div class="av-gender">Female · 10 yrs</div></div>
+      <div class="av-card" data-avatar="in_girl_03" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Myra</div><div class="av-gender">Female · 12 yrs</div></div>
+      <div class="av-card" data-avatar="in_girl_04" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Anika</div><div class="av-gender">Female · 6 yrs</div></div>
+      <div class="av-card" data-avatar="in_girl_05" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Ira</div><div class="av-gender">Female · 9 yrs</div></div>
+      <!-- ── New baby boys (5) ── -->
+      <div class="av-card" data-avatar="in_babyboy_01" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Arjun</div><div class="av-gender">Male · 0-1 mo</div></div>
+      <div class="av-card" data-avatar="in_babyboy_02" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Aryan</div><div class="av-gender">Male · 1 yr</div></div>
+      <div class="av-card" data-avatar="in_babyboy_03" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Rohan</div><div class="av-gender">Male · 0-1 mo</div></div>
+      <div class="av-card" data-avatar="in_babyboy_04" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Dev</div><div class="av-gender">Male · 1 yr</div></div>
+      <div class="av-card" data-avatar="in_babyboy_05" data-country="india" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Raj</div><div class="av-gender">Male · 0-1 mo</div></div>
+      <!-- ── New baby girls (5) ── -->
+      <div class="av-card" data-avatar="in_babygirl_01" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Priya</div><div class="av-gender">Female · 0-1 mo</div></div>
+      <div class="av-card" data-avatar="in_babygirl_02" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Riya</div><div class="av-gender">Female · 1 yr</div></div>
+      <div class="av-card" data-avatar="in_babygirl_03" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Meera</div><div class="av-gender">Female · 0-1 mo</div></div>
+      <div class="av-card" data-avatar="in_babygirl_04" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Ananya</div><div class="av-gender">Female · 1 yr</div></div>
+      <div class="av-card" data-avatar="in_babygirl_05" data-country="india" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Sonali</div><div class="av-gender">Female · 0-1 mo</div></div>
+    </div>
+  </div>
+
+  <!-- USA -->
+  <div id="avGrid-american" class="avatar-grid-wrap">
+    <div class="av-dyn-card on" id="avDyn-american" data-avatar="dynamic" data-country="american" onclick="selectAvatar(this)">
+      <span class="av-dyn-ico">🤖</span>
+      <div class="av-dyn-text"><div class="av-dyn-title">Dynamic AI — American</div><div class="av-dyn-sub">AI generates a natural American face each run</div></div>
+      <div class="av-dyn-check">✓</div>
+    </div>
+    <div class="avatar-grid">
+      <div class="av-card" data-avatar="avatar_james" data-country="american" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">James</div><div class="av-gender">Male · 32</div></div>
+      <div class="av-card" data-avatar="avatar_michael" data-country="american" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Michael</div><div class="av-gender">Male · 28</div></div>
+      <div class="av-card" data-avatar="avatar_tyler" data-country="american" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Tyler</div><div class="av-gender">Male · 35</div></div>
+      <div class="av-card" data-avatar="avatar_emma" data-country="american" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Emma</div><div class="av-gender">Female · 26</div></div>
+      <div class="av-card" data-avatar="avatar_sophia" data-country="american" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Sophia</div><div class="av-gender">Female · 30</div></div>
+
+      <div class="av-card" data-avatar="av_am_3" data-country="american" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👦</span></div><div class="av-name">Boy</div><div class="av-gender">Male · 8-10 yrs</div></div>
+      <div class="av-card" data-avatar="av_am_4" data-country="american" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Girl</div><div class="av-gender">Female · 8-10 yrs</div></div>
+      <div class="av-card" data-avatar="av_am_baby_boy" data-country="american" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Boy</div><div class="av-gender">Male · 12 months</div></div>
+      <div class="av-card" data-avatar="av_am_baby_girl" data-country="american" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Girl</div><div class="av-gender">Female · 12 months</div></div>
+      <div class="av-card" data-avatar="av_am_old_man" data-country="american" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👴</span></div><div class="av-name">Old Man</div><div class="av-gender">Male · 65-70</div></div>
+      <div class="av-card" data-avatar="av_am_old_woman" data-country="american" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👵</span></div><div class="av-name">Old Woman</div><div class="av-gender">Female · 65-70</div></div>
+      <div class="av-card" data-avatar="av_am_1" data-country="american" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">American Man</div><div class="av-gender">Male · early 30s</div></div>
+      <div class="av-card" data-avatar="av_am_2" data-country="american" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">American Woman</div><div class="av-gender">Female · late 20s</div></div>
+    </div>
+  </div>
+
+  <!-- CHINA -->
+  <div id="avGrid-chinese" class="avatar-grid-wrap">
+    <div class="av-dyn-card on" id="avDyn-chinese" data-avatar="dynamic" data-country="chinese" onclick="selectAvatar(this)">
+      <span class="av-dyn-ico">🤖</span><div class="av-dyn-text"><div class="av-dyn-title">Dynamic AI — Chinese</div><div class="av-dyn-sub">AI generates a natural Chinese face each run</div></div><div class="av-dyn-check">✓</div>
+    </div>
+    <div class="avatar-grid">
+      <div class="av-card" data-avatar="avatar_wei" data-country="chinese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Wei</div><div class="av-gender">Male · 30</div></div>
+      <div class="av-card" data-avatar="avatar_liang" data-country="chinese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Liang</div><div class="av-gender">Male · 27</div></div>
+      <div class="av-card" data-avatar="avatar_jun" data-country="chinese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Jun</div><div class="av-gender">Male · 33</div></div>
+      <div class="av-card" data-avatar="avatar_mei" data-country="chinese" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Mei</div><div class="av-gender">Female · 25</div></div>
+      <div class="av-card" data-avatar="avatar_li" data-country="chinese" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Li</div><div class="av-gender">Female · 29</div></div>
+
+      <div class="av-card" data-avatar="av_cn_boy" data-country="chinese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👦</span></div><div class="av-name">Boy</div><div class="av-gender">Male · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_cn_girl" data-country="chinese" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Girl</div><div class="av-gender">Female · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_cn_baby_boy" data-country="chinese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Boy</div><div class="av-gender">Male · 12 months</div></div>
+      <div class="av-card" data-avatar="av_cn_baby_girl" data-country="chinese" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Girl</div><div class="av-gender">Female · 12 months</div></div>
+      <div class="av-card" data-avatar="av_cn_old_man" data-country="chinese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👴</span></div><div class="av-name">Old Man</div><div class="av-gender">Male · 65-70</div></div>
+      <div class="av-card" data-avatar="av_cn_old_woman" data-country="chinese" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👵</span></div><div class="av-name">Old Woman</div><div class="av-gender">Female · 65-70</div></div>
+      <div class="av-card" data-avatar="av_cn_1" data-country="chinese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Chinese Man</div><div class="av-gender">Male · early 30s</div></div>
+      <div class="av-card" data-avatar="av_cn_2" data-country="chinese" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Chinese Woman</div><div class="av-gender">Female · late 20s</div></div>
+    </div>
+  </div>
+
+  <!-- JAPAN -->
+  <div id="avGrid-japanese" class="avatar-grid-wrap">
+    <div class="av-dyn-card on" id="avDyn-japanese" data-avatar="dynamic" data-country="japanese" onclick="selectAvatar(this)">
+      <span class="av-dyn-ico">🤖</span><div class="av-dyn-text"><div class="av-dyn-title">Dynamic AI — Japanese</div><div class="av-dyn-sub">AI generates a natural Japanese face each run</div></div><div class="av-dyn-check">✓</div>
+    </div>
+    <div class="avatar-grid">
+      <div class="av-card" data-avatar="avatar_kenji" data-country="japanese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Kenji</div><div class="av-gender">Male · 31</div></div>
+      <div class="av-card" data-avatar="avatar_hiroshi" data-country="japanese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Hiroshi</div><div class="av-gender">Male · 35</div></div>
+      <div class="av-card" data-avatar="avatar_takeshi" data-country="japanese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Takeshi</div><div class="av-gender">Male · 28</div></div>
+      <div class="av-card" data-avatar="avatar_yuki" data-country="japanese" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Yuki</div><div class="av-gender">Female · 26</div></div>
+      <div class="av-card" data-avatar="avatar_hana" data-country="japanese" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Hana</div><div class="av-gender">Female · 30</div></div>
+
+      <div class="av-card" data-avatar="av_jp_boy" data-country="japanese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👦</span></div><div class="av-name">Boy</div><div class="av-gender">Male · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_jp_girl" data-country="japanese" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Girl</div><div class="av-gender">Female · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_jp_baby_boy" data-country="japanese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Boy</div><div class="av-gender">Male · 12 months</div></div>
+      <div class="av-card" data-avatar="av_jp_baby_girl" data-country="japanese" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Girl</div><div class="av-gender">Female · 12 months</div></div>
+      <div class="av-card" data-avatar="av_jp_old_man" data-country="japanese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👴</span></div><div class="av-name">Old Man</div><div class="av-gender">Male · 65-70</div></div>
+      <div class="av-card" data-avatar="av_jp_old_woman" data-country="japanese" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👵</span></div><div class="av-name">Old Woman</div><div class="av-gender">Female · 65-70</div></div>
+      <div class="av-card" data-avatar="av_jp_1" data-country="japanese" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Japanese Man</div><div class="av-gender">Male · early 30s</div></div>
+      <div class="av-card" data-avatar="av_jp_2" data-country="japanese" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Japanese Woman</div><div class="av-gender">Female · mid 20s</div></div>
+    </div>
+  </div>
+
+  <!-- KOREA -->
+  <div id="avGrid-korean" class="avatar-grid-wrap">
+    <div class="av-dyn-card on" id="avDyn-korean" data-avatar="dynamic" data-country="korean" onclick="selectAvatar(this)">
+      <span class="av-dyn-ico">🤖</span><div class="av-dyn-text"><div class="av-dyn-title">Dynamic AI — Korean</div><div class="av-dyn-sub">AI generates a natural Korean face each run</div></div><div class="av-dyn-check">✓</div>
+    </div>
+    <div class="avatar-grid">
+      <div class="av-card" data-avatar="avatar_minjun" data-country="korean" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Minjun</div><div class="av-gender">Male · 28</div></div>
+      <div class="av-card" data-avatar="avatar_seojun" data-country="korean" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Seojun</div><div class="av-gender">Male · 30</div></div>
+      <div class="av-card" data-avatar="avatar_jihoon" data-country="korean" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Jihoon</div><div class="av-gender">Male · 33</div></div>
+      <div class="av-card" data-avatar="avatar_jisoo" data-country="korean" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Jisoo</div><div class="av-gender">Female · 25</div></div>
+      <div class="av-card" data-avatar="avatar_chaeyeon" data-country="korean" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Chaeyeon</div><div class="av-gender">Female · 27</div></div>
+
+      <div class="av-card" data-avatar="av_kr_boy" data-country="korean" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👦</span></div><div class="av-name">Boy</div><div class="av-gender">Male · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_kr_girl" data-country="korean" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Girl</div><div class="av-gender">Female · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_kr_baby_boy" data-country="korean" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Boy</div><div class="av-gender">Male · 12 months</div></div>
+      <div class="av-card" data-avatar="av_kr_baby_girl" data-country="korean" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Girl</div><div class="av-gender">Female · 12 months</div></div>
+      <div class="av-card" data-avatar="av_kr_old_man" data-country="korean" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👴</span></div><div class="av-name">Old Man</div><div class="av-gender">Male · 65-70</div></div>
+      <div class="av-card" data-avatar="av_kr_old_woman" data-country="korean" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👵</span></div><div class="av-name">Old Woman</div><div class="av-gender">Female · 65-70</div></div>
+      <div class="av-card" data-avatar="av_kr_1" data-country="korean" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Korean Man</div><div class="av-gender">Male · late 20s</div></div>
+      <div class="av-card" data-avatar="av_kr_2" data-country="korean" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Korean Woman</div><div class="av-gender">Female · mid 20s</div></div>
+    </div>
+  </div>
+
+  <!-- EUROPE -->
+  <div id="avGrid-european" class="avatar-grid-wrap">
+    <div class="av-dyn-card on" id="avDyn-european" data-avatar="dynamic" data-country="european" onclick="selectAvatar(this)">
+      <span class="av-dyn-ico">🤖</span><div class="av-dyn-text"><div class="av-dyn-title">Dynamic AI — European</div><div class="av-dyn-sub">AI generates a natural European face each run</div></div><div class="av-dyn-check">✓</div>
+    </div>
+    <div class="avatar-grid">
+      <div class="av-card" data-avatar="avatar_max" data-country="european" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Max</div><div class="av-gender">Male · 32</div></div>
+      <div class="av-card" data-avatar="avatar_luigi" data-country="european" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Luigi</div><div class="av-gender">Male · 35</div></div>
+      <div class="av-card" data-avatar="avatar_leon" data-country="european" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Leon</div><div class="av-gender">Male · 29</div></div>
+      <div class="av-card" data-avatar="avatar_sophie" data-country="european" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Sophie</div><div class="av-gender">Female · 28</div></div>
+      <div class="av-card" data-avatar="avatar_claire" data-country="european" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Claire</div><div class="av-gender">Female · 31</div></div>
+
+      <div class="av-card" data-avatar="av_eu_boy" data-country="european" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👦</span></div><div class="av-name">Boy</div><div class="av-gender">Male · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_eu_girl" data-country="european" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Girl</div><div class="av-gender">Female · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_eu_baby_boy" data-country="european" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Boy</div><div class="av-gender">Male · 12 months</div></div>
+      <div class="av-card" data-avatar="av_eu_baby_girl" data-country="european" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Girl</div><div class="av-gender">Female · 12 months</div></div>
+      <div class="av-card" data-avatar="av_eu_old_man" data-country="european" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👴</span></div><div class="av-name">Old Man</div><div class="av-gender">Male · 65-70</div></div>
+      <div class="av-card" data-avatar="av_eu_old_woman" data-country="european" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👵</span></div><div class="av-name">Old Woman</div><div class="av-gender">Female · 65-70</div></div>
+      <div class="av-card" data-avatar="av_eu_1" data-country="european" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">European Man</div><div class="av-gender">Male · early 30s</div></div>
+      <div class="av-card" data-avatar="av_eu_2" data-country="european" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">European Woman</div><div class="av-gender">Female · late 20s</div></div>
+    </div>
+  </div>
+
+  <!-- ARABIC -->
+  <div id="avGrid-arabic" class="avatar-grid-wrap">
+    <div class="av-dyn-card on" id="avDyn-arabic" data-avatar="dynamic" data-country="arabic" onclick="selectAvatar(this)">
+      <span class="av-dyn-ico">🤖</span><div class="av-dyn-text"><div class="av-dyn-title">Dynamic AI — Arabic</div><div class="av-dyn-sub">AI generates a natural Arabic face each run</div></div><div class="av-dyn-check">✓</div>
+    </div>
+    <div class="avatar-grid">
+      <div class="av-card" data-avatar="avatar_omar" data-country="arabic" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Omar</div><div class="av-gender">Male · 32</div></div>
+      <div class="av-card" data-avatar="avatar_khalid" data-country="arabic" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Khalid</div><div class="av-gender">Male · 30</div></div>
+      <div class="av-card" data-avatar="avatar_hassan" data-country="arabic" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Hassan</div><div class="av-gender">Male · 35</div></div>
+      <div class="av-card" data-avatar="avatar_layla" data-country="arabic" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Layla</div><div class="av-gender">Female · 27</div></div>
+      <div class="av-card" data-avatar="avatar_nour" data-country="arabic" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Nour</div><div class="av-gender">Female · 29</div></div>
+
+      <div class="av-card" data-avatar="av_ar_boy" data-country="arabic" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👦</span></div><div class="av-name">Boy</div><div class="av-gender">Male · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_ar_girl" data-country="arabic" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Girl</div><div class="av-gender">Female · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_ar_baby_boy" data-country="arabic" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Boy</div><div class="av-gender">Male · 12 months</div></div>
+      <div class="av-card" data-avatar="av_ar_baby_girl" data-country="arabic" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Girl</div><div class="av-gender">Female · 12 months</div></div>
+      <div class="av-card" data-avatar="av_ar_old_man" data-country="arabic" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👴</span></div><div class="av-name">Old Man</div><div class="av-gender">Male · 65-70</div></div>
+      <div class="av-card" data-avatar="av_ar_old_woman" data-country="arabic" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👵</span></div><div class="av-name">Old Woman</div><div class="av-gender">Female · 65-70</div></div>
+      <div class="av-card" data-avatar="av_ar_1" data-country="arabic" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Arabic Man</div><div class="av-gender">Male · mid 30s</div></div>
+      <div class="av-card" data-avatar="av_ar_2" data-country="arabic" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Arabic Woman</div><div class="av-gender">Female · late 20s</div></div>
+    </div>
+  </div>
+
+  <!-- AUSTRALIA -->
+  <div id="avGrid-australian" class="avatar-grid-wrap">
+    <div class="av-dyn-card on" id="avDyn-australian" data-avatar="dynamic" data-country="australian" onclick="selectAvatar(this)">
+      <span class="av-dyn-ico">🤖</span><div class="av-dyn-text"><div class="av-dyn-title">Dynamic AI — Australian</div><div class="av-dyn-sub">AI generates a natural Australian face each run</div></div><div class="av-dyn-check">✓</div>
+    </div>
+    <div class="avatar-grid">
+      <div class="av-card" data-avatar="avatar_jack" data-country="australian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Jack</div><div class="av-gender">Male · 31</div></div>
+      <div class="av-card" data-avatar="avatar_liam_au" data-country="australian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Liam</div><div class="av-gender">Male · 28</div></div>
+      <div class="av-card" data-avatar="avatar_ethan_au" data-country="australian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Ethan</div><div class="av-gender">Male · 34</div></div>
+      <div class="av-card" data-avatar="avatar_grace" data-country="australian" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Grace</div><div class="av-gender">Female · 27</div></div>
+      <div class="av-card" data-avatar="avatar_olivia_au" data-country="australian" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Olivia</div><div class="av-gender">Female · 30</div></div>
+
+      <div class="av-card" data-avatar="av_au_boy" data-country="australian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👦</span></div><div class="av-name">Boy</div><div class="av-gender">Male · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_au_girl" data-country="australian" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Girl</div><div class="av-gender">Female · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_au_baby_boy" data-country="australian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Boy</div><div class="av-gender">Male · 12 months</div></div>
+      <div class="av-card" data-avatar="av_au_baby_girl" data-country="australian" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Girl</div><div class="av-gender">Female · 12 months</div></div>
+      <div class="av-card" data-avatar="av_au_old_man" data-country="australian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👴</span></div><div class="av-name">Old Man</div><div class="av-gender">Male · 65-70</div></div>
+      <div class="av-card" data-avatar="av_au_old_woman" data-country="australian" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👵</span></div><div class="av-name">Old Woman</div><div class="av-gender">Female · 65-70</div></div>
+      <div class="av-card" data-avatar="av_au_1" data-country="australian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Australian Man</div><div class="av-gender">Male · early 30s</div></div>
+      <div class="av-card" data-avatar="av_au_2" data-country="australian" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Australian Woman</div><div class="av-gender">Female · late 20s</div></div>
+    </div>
+  </div>
+
+  <!-- BRAZIL -->
+  <div id="avGrid-brazilian" class="avatar-grid-wrap">
+    <div class="av-dyn-card on" id="avDyn-brazilian" data-avatar="dynamic" data-country="brazilian" onclick="selectAvatar(this)">
+      <span class="av-dyn-ico">🤖</span><div class="av-dyn-text"><div class="av-dyn-title">Dynamic AI — Brazilian</div><div class="av-dyn-sub">AI generates a natural Brazilian face each run</div></div><div class="av-dyn-check">✓</div>
+    </div>
+    <div class="avatar-grid">
+      <div class="av-card" data-avatar="avatar_lucas_br" data-country="brazilian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Lucas</div><div class="av-gender">Male · 29</div></div>
+      <div class="av-card" data-avatar="avatar_gabriel" data-country="brazilian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Gabriel</div><div class="av-gender">Male · 31</div></div>
+      <div class="av-card" data-avatar="avatar_mateus" data-country="brazilian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Mateus</div><div class="av-gender">Male · 27</div></div>
+      <div class="av-card" data-avatar="avatar_isabela" data-country="brazilian" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Isabela</div><div class="av-gender">Female · 26</div></div>
+      <div class="av-card" data-avatar="avatar_camila" data-country="brazilian" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Camila</div><div class="av-gender">Female · 30</div></div>
+
+      <div class="av-card" data-avatar="av_br_boy" data-country="brazilian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👦</span></div><div class="av-name">Boy</div><div class="av-gender">Male · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_br_girl" data-country="brazilian" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Girl</div><div class="av-gender">Female · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_br_baby_boy" data-country="brazilian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Boy</div><div class="av-gender">Male · 12 months</div></div>
+      <div class="av-card" data-avatar="av_br_baby_girl" data-country="brazilian" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Girl</div><div class="av-gender">Female · 12 months</div></div>
+      <div class="av-card" data-avatar="av_br_old_man" data-country="brazilian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👴</span></div><div class="av-name">Old Man</div><div class="av-gender">Male · 65-70</div></div>
+      <div class="av-card" data-avatar="av_br_old_woman" data-country="brazilian" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👵</span></div><div class="av-name">Old Woman</div><div class="av-gender">Female · 65-70</div></div>
+      <div class="av-card" data-avatar="av_br_1" data-country="brazilian" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Brazilian Man</div><div class="av-gender">Male · late 20s</div></div>
+      <div class="av-card" data-avatar="av_br_2" data-country="brazilian" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Brazilian Woman</div><div class="av-gender">Female · late 20s</div></div>
+    </div>
+  </div>
+
+  <!-- AFRICA -->
+  <div id="avGrid-african" class="avatar-grid-wrap">
+    <div class="av-dyn-card on" id="avDyn-african" data-avatar="dynamic" data-country="african" onclick="selectAvatar(this)">
+      <span class="av-dyn-ico">🤖</span><div class="av-dyn-text"><div class="av-dyn-title">Dynamic AI — African</div><div class="av-dyn-sub">AI generates a natural African face each run</div></div><div class="av-dyn-check">✓</div>
+    </div>
+    <div class="avatar-grid">
+      <div class="av-card" data-avatar="avatar_kofi" data-country="african" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Kofi</div><div class="av-gender">Male · 30</div></div>
+      <div class="av-card" data-avatar="avatar_kwame" data-country="african" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Kwame</div><div class="av-gender">Male · 33</div></div>
+      <div class="av-card" data-avatar="avatar_emeka" data-country="african" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">Emeka</div><div class="av-gender">Male · 28</div></div>
+      <div class="av-card" data-avatar="avatar_amara" data-country="african" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Amara</div><div class="av-gender">Female · 27</div></div>
+      <div class="av-card" data-avatar="avatar_zuri" data-country="african" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">Zuri</div><div class="av-gender">Female · 31</div></div>
+
+      <div class="av-card" data-avatar="av_af_boy" data-country="african" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👦</span></div><div class="av-name">Boy</div><div class="av-gender">Male · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_af_girl" data-country="african" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👧</span></div><div class="av-name">Girl</div><div class="av-gender">Female · 7-9 yrs</div></div>
+      <div class="av-card" data-avatar="av_af_baby_boy" data-country="african" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Boy</div><div class="av-gender">Male · 12 months</div></div>
+      <div class="av-card" data-avatar="av_af_baby_girl" data-country="african" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👶</span></div><div class="av-name">Baby Girl</div><div class="av-gender">Female · 12 months</div></div>
+      <div class="av-card" data-avatar="av_af_old_man" data-country="african" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👴</span></div><div class="av-name">Old Man</div><div class="av-gender">Male · 65-70</div></div>
+      <div class="av-card" data-avatar="av_af_old_woman" data-country="african" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👵</span></div><div class="av-name">Old Woman</div><div class="av-gender">Female · 65-70</div></div>
+      <div class="av-card" data-avatar="av_af_1" data-country="african" data-gender="male" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">🧑</span></div><div class="av-name">African Man</div><div class="av-gender">Male · early 30s</div></div>
+      <div class="av-card" data-avatar="av_af_2" data-country="african" data-gender="female" onclick="selectAvatar(this)"><div class="av-thumb"><span class="av-ph">👩</span></div><div class="av-name">African Woman</div><div class="av-gender">Female · late 20s</div></div>
+    </div>
+  </div>
+
+  <!-- GLOBAL -->
+  <div id="avGrid-global" class="avatar-grid-wrap">
+    <div class="av-dyn-card on" id="avDyn-global" data-avatar="dynamic" data-country="global" onclick="selectAvatar(this)">
+      <span class="av-dyn-ico">🤖</span><div class="av-dyn-text"><div class="av-dyn-title">Dynamic AI — Global</div><div class="av-dyn-sub">AI generates a diverse natural face each run</div></div><div class="av-dyn-check">✓</div>
+    </div>
+  </div>
+      <div class="sec-lbl" style="padding-top:20px">📍 Location / Scene</div>
+<div class="loc-grid" id="locGrid">
+    <!-- ── Fashion / Ethnic (highlighted group) ── -->
+    <div class="loc-card fashion-loc" data-loc="traditional saree showroom" onclick="selectLoc(this)"><div class="loc-card-ico">🧵</div><div class="loc-card-name">Saree Showroom</div></div>
+    <div class="loc-card fashion-loc" data-loc="temple courtyard heritage" onclick="selectLoc(this)"><div class="loc-card-ico">🛕</div><div class="loc-card-name">Temple Courtyard</div></div>
+    <div class="loc-card fashion-loc" data-loc="heritage home interior" onclick="selectLoc(this)"><div class="loc-card-ico">🪔</div><div class="loc-card-name">Heritage Home</div></div>
+    <div class="loc-card fashion-loc" data-loc="carved archway ethnic" onclick="selectLoc(this)"><div class="loc-card-ico">🏯</div><div class="loc-card-name">Ethnic Archway</div></div>
+    <div class="loc-card fashion-loc" data-loc="luxury marble hall" onclick="selectLoc(this)"><div class="loc-card-ico">✨</div><div class="loc-card-name">Marble Hall</div></div>
+    <div class="loc-card fashion-loc" data-loc="indian art gallery" onclick="selectLoc(this)"><div class="loc-card-ico">🖼</div><div class="loc-card-name">Art Gallery</div></div>
+    <div class="loc-card fashion-loc" data-loc="silk store interior" onclick="selectLoc(this)"><div class="loc-card-ico">🎀</div><div class="loc-card-name">Silk Store</div></div>
+    <div class="loc-card fashion-loc" data-loc="temple entrance evening" onclick="selectLoc(this)"><div class="loc-card-ico">🪔</div><div class="loc-card-name">Temple Evening</div></div>
+    <!-- ── General locations ── -->
+    <div class="loc-card on" data-loc="indoor home hall" onclick="selectLoc(this)"><div class="loc-card-ico">🏠</div><div class="loc-card-name">Home Hall</div></div>
+    <div class="loc-card" data-loc="studio" onclick="selectLoc(this)"><div class="loc-card-ico">📸</div><div class="loc-card-name">Studio</div></div>
+    <div class="loc-card" data-loc="indoor home kitchen" onclick="selectLoc(this)"><div class="loc-card-ico">🍳</div><div class="loc-card-name">Kitchen</div></div>
+    <div class="loc-card" data-loc="indoor home bedroom" onclick="selectLoc(this)"><div class="loc-card-ico">🛏</div><div class="loc-card-name">Bedroom</div></div>
+    <div class="loc-card" data-loc="indoor balcony" onclick="selectLoc(this)"><div class="loc-card-ico">🌅</div><div class="loc-card-name">Balcony</div></div>
+    <div class="loc-card" data-loc="outdoor home garden" onclick="selectLoc(this)"><div class="loc-card-ico">🌿</div><div class="loc-card-name">Garden</div></div>
+    <div class="loc-card" data-loc="outdoor home parking" onclick="selectLoc(this)"><div class="loc-card-ico">🚗</div><div class="loc-card-name">Parking</div></div>
+    <div class="loc-card" data-loc="coastal" onclick="selectLoc(this)"><div class="loc-card-ico">🏖</div><div class="loc-card-name">Coastal</div></div>
+    <div class="loc-card" data-loc="busy city" onclick="selectLoc(this)"><div class="loc-card-ico">🏙</div><div class="loc-card-name">City Street</div></div>
+    <div class="loc-card" data-loc="airport" onclick="selectLoc(this)"><div class="loc-card-ico">✈️</div><div class="loc-card-name">Airport</div></div>
+    <div class="loc-card" data-loc="metro station" onclick="selectLoc(this)"><div class="loc-card-ico">🚇</div><div class="loc-card-name">Metro</div></div>
+    <div class="loc-card" data-loc="bathroom" onclick="selectLoc(this)"><div class="loc-card-ico">🚿</div><div class="loc-card-name">Bathroom</div></div>
+    <div class="loc-card" data-loc="theater" onclick="selectLoc(this)"><div class="loc-card-ico">🎬</div><div class="loc-card-name">Theater</div></div>
+    <div class="loc-card" data-loc="mall" onclick="selectLoc(this)"><div class="loc-card-ico">🛍</div><div class="loc-card-name">Mall</div></div>
+    <div class="loc-card" data-loc="park" onclick="selectLoc(this)"><div class="loc-card-ico">🌳</div><div class="loc-card-name">Park</div></div>
+    <div class="loc-card" data-loc="wedding venue" onclick="selectLoc(this)"><div class="loc-card-ico">💒</div><div class="loc-card-name">Wedding Venue</div></div>
+    <div class="loc-card" data-loc="festival ground" onclick="selectLoc(this)"><div class="loc-card-ico">🎉</div><div class="loc-card-name">Festival Ground</div></div>
+    <div class="loc-card" data-loc="school" onclick="selectLoc(this)"><div class="loc-card-ico">🏫</div><div class="loc-card-name">School</div></div>
+    <div class="loc-card" data-loc="jewellery studio" onclick="selectLoc(this)"><div class="loc-card-ico">💎</div><div class="loc-card-name">Jewellery Studio</div></div>
+  </div>
+</div>
+    </div>
+  </div>
+
+  <!-- EMAIL -->
+  <div class="card">
+    <div class="ctitle">📧 Email Delivery</div>
+    <label class="lbl">Results will be sent to</label>
+    <input class="inp" id="emailDisp" type="email" readonly placeholder="Sign in to see your email">
+    <div style="font-size:.75rem;color:var(--dim);margin-top:6px">Emailed when generation completes (~30 min)</div>
+  </div>
+
+  <button class="sbtn" id="submitBtn" onclick="doSubmit()" disabled>
+    <span id="submitLbl">⚡ Submit Batch</span>
+  </button>
+  <div id="submitErr" style="color:var(--red);font-size:.82rem;margin-top:10px;text-align:center"></div>
+</main>
+
+<!-- SUCCESS -->
+<div class="pg" id="successPanel">
+  <div class="scrd">
+    <div class="sico">✅</div>
+    <div class="stitle">Batch Submitted!</div>
+    <div class="ssub">
+      Your <strong id="sCount">0</strong> images are being generated.<br>
+      Results will be emailed to <strong id="sEmail"></strong> in approximately <strong>30 minutes</strong>.
+    </div>
+    <div class="sjob" id="sJobId"></div>
+    <button class="newbtn" onclick="resetAll()">Submit Another Batch</button>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="moverlay" id="authModal">
+  <div class="mcrd">
+    <button class="mxbtn" onclick="closeModal()">✕</button>
+    <div class="mtitle">Sign in to VinSnap</div>
+    <input class="minp" id="liEmail" type="email" placeholder="Email address" autocomplete="email">
+    <input class="minp" id="liPass" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="mbtn" onclick="doSignIn()">Sign In</button>
+    <div class="mmsg" id="liMsg"></div>
+    <div class="mswitch">New to VinSnap? <a onclick="showSignupNote()">Sign up</a></div>
+  </div>
+</div>
+
+<div class="toast-el" id="toastEl"></div>
+
+<script>
+// ══ CONFIG ═══════════════════════════════════════════════════════════
+const SB_URL  = 'https://rqzflfyqazklfnfxefct.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxemZsZnlxYXprbGZuZnhlZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMjgxMDIsImV4cCI6MjA5MTgwNDEwMn0.q3F9dEDdNQ7kBGtReTQx6r8wvgGks5lL-ThZAi2uPEY';
+const WEBHOOK = 'https://n8n.vinmediaai.online/webhook/vinsnap-batch-submit';
+const { createClient } = window.supabase;
+const sb = createClient(SB_URL, SB_KEY);
+
+// ══ STATE ════════════════════════════════════════════════════════════
+let user           = null;
+let uploads        = [];        // [{base64, mimeType, index}]
+let avatarId       = 'dynamic';
+let avatarCountry  = 'india';
+let locationVariant = '';
+let genMode        = 'dynamic';
+
+// ══ SUBCATEGORY MAP ══════════════════════════════════════════════════
+const SUBCATS = {
+  womens_fashion:['womens_ethnic_saree','womens_ethnic_lehenga','womens_ethnic_kurti','womens_western_dress','womens_western_top','womens_western_jeans','womens_western_co-ord'],
+  mens_fashion:  ['mens_formal_shirt','mens_casual_shirt','mens_tshirt','mens_trousers','mens_jeans','mens_kurta','mens_suit'],
+  kids_fashion:  ['kids_top','kids_dress','kids_tshirt','kids_ethnic','kids_winter'],
+  footwear:      ['footwear_sneakers','footwear_sandals','footwear_heels','footwear_flats','footwear_boots','footwear_ethnic'],
+  jewellery:     ['jewellery_necklace','jewellery_earring','jewellery_ring','jewellery_bangle','jewellery_bracelet','jewellery_set','jewellery_mens_chain','jewellery_anklet','jewellery_maang_tikka'],
+  accessories:   ['acc_handbag','acc_sling_bag','acc_backpack','acc_wallet','acc_belt','acc_watch','acc_smartwatch','acc_sunglasses','acc_scarf'],
+  home_kitchen:  ['home_cookware','home_bakeware','home_storage','home_dinnerware','home_glassware','home_appliance'],
+  home_decor:    ['home_bedsheet','home_cushion','home_curtain','home_comforter','home_carpet','home_wall_art','home_candle','home_led_lights'],
+  beauty:        ['beauty_skincare','beauty_haircare','beauty_makeup','beauty_perfume','skincare_baby'],
+  electronics:   ['electronics_earbuds','electronics_watch','electronics_smartwatch','electronics_phone','electronics_tablet','electronics_laptop','electronics_camera'],
+  health:        ['health_fitness','health_massager','health_monitor','health_supplement','health_personal_care'],
+  toys:          ['toys_soft','toys_building','toys_action','rideon','toys_educational'],
+  stationery:    ['stationery_pen','stationery_notebook','stationery_art','stationery_school'],
+  other:         []
+};
+
+// ══ AUTH ═════════════════════════════════════════════════════════════
+sb.auth.onAuthStateChange((_e, session) => {
+  user = session?.user || null;
+  const btn = document.getElementById('authBtn');
+  const badge = document.getElementById('ubadge');
+  const emailDisp = document.getElementById('emailDisp');
+  if (user) {
+    btn.textContent = 'Sign Out'; btn.onclick = doSignOut; btn.className = 'auth-btn sign-out';
+    badge.textContent = user.email.split('@')[0];
+    emailDisp.value = user.email;
+    closeModal();
+  } else {
+    btn.textContent = 'Sign In'; btn.onclick = openModal; btn.className = 'auth-btn sign-in';
+    badge.textContent = 'Sign in to use';
+    emailDisp.value = '';
+  }
+  checkReady();
+});
+async function doSignIn() {
+  const email = document.getElementById('liEmail').value.trim();
+  const pass  = document.getElementById('liPass').value;
+  if (!email||!pass) { liMsg('Please fill in all fields.','err'); return; }
+  const {error} = await sb.auth.signInWithPassword({email, password:pass});
+  if (error) liMsg(error.message,'err');
+}
+async function doSignOut() { await sb.auth.signOut(); }
+function openModal()  { document.getElementById('authModal').classList.add('open'); }
+function closeModal() { document.getElementById('authModal').classList.remove('open'); }
+function liMsg(msg,type) { const el=document.getElementById('liMsg'); el.textContent=msg; el.className='mmsg '+type; }
+function showSignupNote() { toast('Please sign up on the main VinSnap page.'); closeModal(); }
+
+// ══ CATEGORY ═════════════════════════════════════════════════════════
+function onCatChange() {
+  const cat = document.getElementById('catSel').value;
+  const sub = document.getElementById('subSel');
+  sub.innerHTML = '<option value="">Select subcategory…</option>';
+  (SUBCATS[cat]||[]).forEach(s => {
+    const o = document.createElement('option');
+    o.value = s;
+    o.textContent = s.replace(/_/g,' ').replace(/\w/g, c=>c.toUpperCase());
+    sub.appendChild(o);
+  });
+  checkReady();
+}
+
+// ══ UPLOAD ═══════════════════════════════════════════════════════════
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('uzone').classList.remove('drag-over');
+  handleFiles(Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/')));
+}
+function onFilePick(e) { handleFiles(Array.from(e.target.files)); e.target.value=''; }
+
+async function handleFiles(files) {
+  const rem = 10 - uploads.length;
+  if (rem<=0) { toast('Maximum 10 images reached'); return; }
+  if (files.length>rem) toast(`Only ${rem} more image(s) can be added`);
+  for (const f of files.slice(0,rem)) {
+    if (f.size > 10*1024*1024) { toast(`${f.name} too large (max 10MB)`); continue; }
+    const blob = await compress(f);
+    const b64  = await readB64(blob);
+    uploads.push({ base64: b64.split(',')[1], mimeType: f.type||'image/jpeg', index: uploads.length });
+  }
+  renderThumbs(); updateCounter(); checkReady();
+}
+
+function renderThumbs() {
+  const g = document.getElementById('thumbGrid'); g.innerHTML='';
+  uploads.forEach((u,i) => {
+    const d = document.createElement('div'); d.className='titem';
+    d.innerHTML = `<img src="data:${u.mimeType};base64,${u.base64}"><button class="tremove" onclick="removeThumb(${i})">✕</button><span class="tidx">${i+1}</span>`;
+    g.appendChild(d);
+  });
+}
+function removeThumb(i) {
+  uploads.splice(i,1); uploads.forEach((u,idx)=>u.index=idx);
+  renderThumbs(); updateCounter(); checkReady();
+}
+
+function compress(file, maxPx=1500, q=0.82) {
+  return new Promise(res => {
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w=img.naturalWidth, h=img.naturalHeight;
+      if (w<=maxPx && h<=maxPx && file.size<800*1024) { res(file); return; }
+      const s=Math.min(1,maxPx/Math.max(w,h));
+      w=Math.round(w*s); h=Math.round(h*s);
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      c.toBlob(b=>res(b||file),'image/jpeg',q);
+    };
+    img.onerror = ()=>res(file);
+    img.src = url;
+  });
+}
+function readB64(file) {
+  return new Promise((res,rej) => {
+    const r=new FileReader();
+    r.onload=()=>res(r.result); r.onerror=()=>rej(new Error('read failed'));
+    r.readAsDataURL(file);
+  });
+}
+
+// ══ IMAGE TYPES ══════════════════════════════════════════════════════
+function onTypeTick(cb) {
+  cb.closest('.tycb').classList.toggle('on', cb.checked);
+  updateCounter(); checkReady();
+}
+function getTypes() {
+  return Array.from(document.querySelectorAll('.tycb input:checked')).map(c=>c.value);
+}
+
+// ══ COUNT BANNER ═════════════════════════════════════════════════════
+function updateCounter() {
+  const imgs=uploads.length, types=getTypes().length, total=imgs*types;
+  const b=document.getElementById('countBanner');
+  if (total>0) {
+    b.classList.remove('hidden');
+    document.getElementById('countNum').textContent  = total;
+    document.getElementById('countBreak').textContent = `${imgs} image${imgs!==1?'s':''} × ${types} type${types!==1?'s':''}`;
+  } else b.classList.add('hidden');
+}
+
+// ══ MODE ═════════════════════════════════════════════════════════════
+function setMode(m) {
+  genMode = m;
+  document.getElementById('modeDyn').classList.toggle('on', m==='dynamic');
+  document.getElementById('modeCus').classList.toggle('on', m==='custom');
+  document.getElementById('customPanel').style.display = m==='custom' ? 'block' : 'none';
+  if (m==='dynamic') { avatarId='dynamic'; avatarCountry='india'; locationVariant=''; }
+}
+
+// ══ AVATAR FUNCTIONS (minimal — only what's needed) ══════════════════
+function selectCountry(el) {
+  document.querySelectorAll('.av-country-tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.avatar-grid-wrap').forEach(g=>g.classList.remove('on'));
+  el.classList.add('on');
+  avatarCountry = el.dataset.country;
+  const grid = document.getElementById('avGrid-'+avatarCountry);
+  if (grid) grid.classList.add('on');
+  const dyn = document.getElementById('avDyn-'+avatarCountry);
+  if (dyn) selectAvatar(dyn);
+}
+function selectAvatar(el) {
+  const country = el.dataset.country;
+  const grid = document.getElementById('avGrid-'+country);
+  if (grid) {
+    grid.querySelectorAll('.av-card').forEach(c=>c.classList.remove('on'));
+    const dyn = grid.querySelector('.av-dyn-card');
+    if (dyn) dyn.classList.remove('on');
+  }
+  el.classList.add('on');
+  avatarId = el.dataset.avatar;
+}
+
+// ══ LOCATION FUNCTION ════════════════════════════════════════════════
+function selectLoc(el) {
+  document.querySelectorAll('.loc-card').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  locationVariant = el.dataset.loc;
+}
+
+// ══ SUBMIT ═══════════════════════════════════════════════════════════
+function checkReady() {
+  const ok = user &&
+    uploads.length > 0 &&
+    document.getElementById('catSel').value &&
+    getTypes().length > 0 &&
+    document.getElementById('productName').value.trim();
+  document.getElementById('submitBtn').disabled = !ok;
+}
+
+async function doSubmit() {
+  if (!user) { openModal(); return; }
+  const name  = document.getElementById('productName').value.trim();
+  const cat   = document.getElementById('catSel').value;
+  const sub   = document.getElementById('subSel').value;
+  const types = getTypes();
+  document.getElementById('submitErr').textContent = '';
+  if (!uploads.length) { showErr('Please upload at least one image.'); return; }
+  if (!cat)            { showErr('Please select a category.'); return; }
+  if (!types.length)   { showErr('Please select at least one image type.'); return; }
+  if (!name)           { showErr('Please enter a product name.'); return; }
+  if (genMode==='custom' && !locationVariant) { showErr('Please select a location in Custom mode.'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  document.getElementById('submitLbl').innerHTML = '<span class="spin"></span> Submitting…';
+
+  const payload = {
+    productName: name, category: cat, subcategory: sub,
+    email: user.email, mode: genMode,
+    avatarId:        genMode==='custom' ? avatarId        : 'dynamic',
+    avatarCountry:   genMode==='custom' ? avatarCountry   : 'india',
+    locationVariant: genMode==='custom' ? locationVariant : 'dynamic',
+    selectedTypes: types,
+    images: uploads.map(u=>({ base64:u.base64, mimeType:u.mimeType, index:u.index }))
+  };
+
+  try {
+    const resp = await fetch(WEBHOOK, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const result = await resp.json();
+    document.getElementById('mainForm').style.display    = 'none';
+    document.getElementById('successPanel').style.display = 'block';
+    document.getElementById('sCount').textContent  = uploads.length * types.length;
+    document.getElementById('sEmail').textContent  = user.email;
+    document.getElementById('sJobId').textContent  = `Job ID: ${result.jobId||'submitted'}`;
+  } catch(e) {
+    showErr('Submission failed — ' + e.message);
+    btn.disabled = false;
+    document.getElementById('submitLbl').textContent = '⚡ Submit Batch';
+  }
+}
+function showErr(msg) { document.getElementById('submitErr').textContent=msg; }
+
+function resetAll() {
+  uploads=[]; avatarId='dynamic'; avatarCountry='india'; locationVariant=''; genMode='dynamic';
+  document.getElementById('thumbGrid').innerHTML = '';
+  document.getElementById('productName').value   = '';
+  document.getElementById('catSel').value        = '';
+  document.getElementById('subSel').innerHTML    = '<option value="">Select subcategory…</option>';
+  document.querySelectorAll('.tycb input').forEach(cb=>{cb.checked=true; cb.closest('.tycb').classList.add('on');});
+  setMode('dynamic');
+  document.getElementById('countBanner').classList.add('hidden');
+  document.getElementById('mainForm').style.display    = 'block';
+  document.getElementById('successPanel').style.display = 'none';
+  document.getElementById('submitLbl').textContent     = '⚡ Submit Batch';
+  checkReady();
+}
+
+// ══ TOAST ════════════════════════════════════════════════════════════
+let _tt;
+function toast(msg, dur=3000) {
+  const el = document.getElementById('toastEl');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'), dur);
+}
+</script>
+</body>
+</html>
