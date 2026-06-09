@@ -154,6 +154,27 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .img-link:hover{border-color:var(--accent);background:#f0f0ff}
 .img-link-label{font-weight:600}
 .img-link-sub{font-size:.72rem;color:var(--dim);margin-top:1px}
+.dl-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:var(--rx);background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Outfit',sans-serif;font-size:.76rem;font-weight:700;text-decoration:none;border:none;cursor:pointer;flex-shrink:0;transition:.2s}
+.dl-btn:hover{opacity:.85}
+.dl-all-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:var(--rx);background:linear-gradient(135deg,var(--green),#047857);color:#fff;font-family:'Outfit',sans-serif;font-size:.82rem;font-weight:700;border:none;cursor:pointer;transition:.2s}
+.dl-all-btn:hover{opacity:.85}
+
+/* ── JOB HISTORY TABLE ── */
+.jhist-wrap{margin-top:20px}
+.jhist-title{font-size:.82rem;font-weight:700;color:var(--dim2);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.jhist-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.jhist-table th{text-align:left;padding:7px 10px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);border-bottom:2px solid var(--border);white-space:nowrap}
+.jhist-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.jhist-table tr:last-child td{border-bottom:none}
+.jhist-table tr:hover td{background:var(--card2)}
+.jhist-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:.72rem;font-weight:700}
+.jhist-chip.pending{background:#fef3c7;color:#92400e}
+.jhist-chip.running{background:#dbeafe;color:#1e40af}
+.jhist-chip.completed,.jhist-chip.done,.jhist-chip.completed_with_errors{background:#d1fae5;color:#065f46}
+.jhist-chip.failed{background:#fee2e2;color:#991b1b}
+.jhist-jid{font-family:monospace;font-size:.68rem;color:var(--dim);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jhist-dl{display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:var(--rx);background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Outfit',sans-serif;font-size:.7rem;font-weight:700;border:none;cursor:pointer;white-space:nowrap}
+.jhist-dl:disabled{opacity:.4;cursor:not-allowed}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.5s ease infinite}
 .pulse-dot.done{background:var(--green);animation:none}
@@ -786,8 +807,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 
     <!-- Done: image links -->
     <div id="doneSection" style="display:none">
-      <div style="font-size:.85rem;font-weight:600;color:var(--green);margin:14px 0 10px">
-        ✅ Generation complete — <span id="doneCount">0</span> images ready
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:14px 0 10px">
+        <div style="font-size:.85rem;font-weight:600;color:var(--green)">
+          ✅ Generation complete — <span id="doneCount">0</span> images ready
+        </div>
+        <button class="dl-all-btn" onclick="downloadAllCurrent()" id="dlAllBtn">
+          ⬇ Download All
+        </button>
       </div>
       <div id="imageLinks" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>
@@ -808,6 +834,24 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
         + New Batch
       </button>
     </div>
+  </div>
+
+  <!-- Job History — persists across New Batch clicks -->
+  <div class="card jhist-wrap" id="jobHistWrap" style="display:none">
+    <div class="jhist-title">📋 Submitted Jobs <span id="jobHistCount" style="background:var(--accent);color:#fff;font-size:.68rem;padding:2px 7px;border-radius:20px;font-weight:700"></span></div>
+    <table class="jhist-table">
+      <thead>
+        <tr>
+          <th>Job ID</th>
+          <th>Product</th>
+          <th>Images</th>
+          <th>Submitted</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="jobHistBody"></tbody>
+    </table>
   </div>
 
 </div>
@@ -900,7 +944,7 @@ sb.auth.onAuthStateChange((_e, session) => {
       try {
         const j = JSON.parse(saved);
         if (j.jobId && j.email === user.email) {
-          showStatusPanel(j.jobId, j.totalImages, user.email, /*restore=*/true);
+          showStatusPanel(j.jobId, j.totalImages, user.email, /*restore=*/true, j.productName||'');
         }
       } catch(e) { localStorage.removeItem('vs_active_job'); }
     }
@@ -1125,7 +1169,7 @@ async function doSubmit() {
     await respB.json();
 
     setSubmitStep('Submitted ✓', 100);
-    showStatusPanel(jobId, uploads.length * types.length, user.email);
+    showStatusPanel(jobId, uploads.length * types.length, user.email, false, name);
 
   } catch(e) {
     showErr('Submission failed — ' + e.message);
@@ -1167,10 +1211,10 @@ let _currentJobId = null;
 let _pollTimer    = null;
 const POLL_INTERVAL = 30000;
 
-function showStatusPanel(jobId, totalImages, email, restore=false) {
+function showStatusPanel(jobId, totalImages, email, restore=false, productName='') {
   _currentJobId = jobId;
   // Persist so job survives page reload / sign-out+sign-in
-  try { localStorage.setItem('vs_active_job', JSON.stringify({ jobId, totalImages, email })); } catch(e) {}
+  try { localStorage.setItem('vs_active_job', JSON.stringify({ jobId, totalImages, email, productName })); } catch(e) {}
   document.getElementById('mainForm').style.display    = 'none';
   document.getElementById('successPanel').style.display = 'block';
   document.getElementById('sCount').textContent  = totalImages;
@@ -1179,6 +1223,8 @@ function showStatusPanel(jobId, totalImages, email, restore=false) {
   document.getElementById('dJobId').textContent  = jobId;
   document.getElementById('detailGrid').style.display = 'grid';
   if (!restore) setStatusChip('pending');
+  // Add to persistent job history
+  addJobToHistory(jobId, totalImages, productName);
   // Small delay before first poll to avoid race where Supabase row isn't written yet
   setTimeout(() => startPolling(), restore ? 0 : 4000);
 }
@@ -1239,6 +1285,7 @@ function applyJobStatus(job) {
     clearInterval(_pollTimer);
     try { localStorage.removeItem('vs_active_job'); } catch(e) {}
     document.getElementById('failedSection').style.display = 'block';
+    updateHistoryRow(job.batch_job_id || _currentJobId, 'failed', []);
   } else {
     // pending / running — keep polling
     prog.style.display = 'block';
@@ -1274,8 +1321,6 @@ function showDoneSection(job) {
   const section = document.getElementById('doneSection');
   section.style.display = 'block';
 
-  // fn_output writes to "output_images" column as a JSON array
-  // Each entry has: { public_url, shot_type, image_index } or similar
   let images = [];
   try {
     const raw = job.output_images || job.oci_image_urls || '[]';
@@ -1284,6 +1329,9 @@ function showDoneSection(job) {
 
   const successImages = images.filter(img => img && (img.public_url || img.url || img.publicUrl || img.ociUrl));
   document.getElementById('doneCount').textContent = successImages.length;
+
+  // Store for Download All
+  _currentImages = successImages;
 
   const container = document.getElementById('imageLinks');
   container.innerHTML = '';
@@ -1300,17 +1348,23 @@ function showDoneSection(job) {
     const shotType = img.shot_type  || img.type || img.shotType || '';
     const imgIdx   = img.image_index != null ? img.image_index : (img.index != null ? img.index : i);
     if (!url) return;
-    const a = document.createElement('a');
-    a.href = url; a.target = '_blank'; a.className = 'img-link';
+    const fname = `vinsnap_${String(parseInt(imgIdx)+1).padStart(4,'0')}_${shotType||'img'}.jpg`;
     const label = `Image ${parseInt(imgIdx)+1}${shotType ? ' — ' + (typeLabels[shotType] || shotType) : ''}`;
-    a.innerHTML = `<div><div class="img-link-label">${label}</div><div class="img-link-sub">${url.split('/').pop()}</div></div><span style="color:var(--accent);font-size:.85rem;flex-shrink:0">↗ Open</span>`;
-    container.appendChild(a);
+    const row = document.createElement('div');
+    row.className = 'img-link';
+    row.innerHTML = `<div><div class="img-link-label">${label}</div><div class="img-link-sub">${url.split('/').pop()}</div></div>`
+      + `<a class="dl-btn" href="${url}" download="${fname}" target="_blank">⬇ Download</a>`;
+    container.appendChild(row);
   });
+
+  // Update history row status for this job
+  updateHistoryRow(job.batch_job_id || _currentJobId, 'completed', successImages);
 }
 
 function resetAll() {
   clearInterval(_pollTimer);
   _currentJobId = null;
+  _currentImages = [];
   try { localStorage.removeItem('vs_active_job'); } catch(e) {}
   uploads=[]; avatarId='dynamic'; avatarCountry='india'; locationVariant=''; genMode='dynamic';
   document.getElementById('thumbGrid').innerHTML = '';
@@ -1333,6 +1387,107 @@ function resetAll() {
   document.getElementById('detailGrid').style.display = 'none';
   document.getElementById('imageLinks').innerHTML = '';
   checkReady();
+}
+
+// ══ DOWNLOAD ALL (current job) ═══════════════════════════════════════
+let _currentImages = [];
+
+function downloadAllCurrent() {
+  if (!_currentImages.length) { toast('No images to download'); return; }
+  toast(`Starting ${_currentImages.length} downloads…`);
+  let i = 0;
+  function next() {
+    if (i >= _currentImages.length) { toast(`${_currentImages.length} downloads started ✓`); return; }
+    const img = _currentImages[i];
+    const url = img.public_url || img.publicUrl || img.url || img.ociUrl || '';
+    if (!url) { i++; next(); return; }
+    const shotType = img.shot_type || img.type || img.shotType || '';
+    const imgIdx   = img.image_index != null ? img.image_index : i;
+    const fname    = `vinsnap_${String(parseInt(imgIdx)+1).padStart(4,'0')}_${shotType||'img'}.jpg`;
+    const a = document.createElement('a');
+    a.href = url; a.download = fname; a.target = '_blank';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    i++; setTimeout(next, 400);
+  }
+  next();
+}
+
+// ══ JOB HISTORY ══════════════════════════════════════════════════════
+// Persists across New Batch clicks within the session
+let _jobHistory = [];   // [{jobId, productName, imageCount, submittedAt, status, images[]}]
+
+function addJobToHistory(jobId, totalImages, productName) {
+  // Avoid duplicates
+  if (_jobHistory.find(j => j.jobId === jobId)) return;
+  _jobHistory.push({
+    jobId,
+    productName: productName || '—',
+    totalImages,
+    submittedAt: new Date(),
+    status: 'pending',
+    images: [],
+  });
+  renderJobHistory();
+}
+
+function updateHistoryRow(jobId, status, images) {
+  const entry = _jobHistory.find(j => j.jobId === jobId);
+  if (!entry) return;
+  entry.status = status;
+  if (images && images.length) entry.images = images;
+  renderJobHistory();
+}
+
+function renderJobHistory() {
+  if (!_jobHistory.length) return;
+  const wrap = document.getElementById('jobHistWrap');
+  const body = document.getElementById('jobHistBody');
+  const cnt  = document.getElementById('jobHistCount');
+  wrap.style.display = 'block';
+  cnt.textContent = _jobHistory.length;
+  body.innerHTML = '';
+  // Newest first
+  [..._jobHistory].reverse().forEach(j => {
+    const statusLabels = {
+      pending:'⏳ Pending', running:'⚙️ Generating',
+      completed:'✅ Done', completed_with_errors:'⚠️ Done', done:'✅ Done', failed:'❌ Failed'
+    };
+    const chipStatus = j.status === 'completed_with_errors' ? 'completed' : j.status;
+    const hasDl = (j.status === 'completed' || j.status === 'completed_with_errors' || j.status === 'done') && j.images.length;
+    const shortId = j.jobId.replace('batch-','').substring(0,16) + '…';
+    const timeStr = j.submittedAt ? j.submittedAt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '—';
+    const dateStr = j.submittedAt ? j.submittedAt.toLocaleDateString([], {month:'short',day:'numeric'}) : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td><div class="jhist-jid" title="${j.jobId}">${shortId}</div></td>`
+    + `<td style="font-weight:600;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${j.productName}">${j.productName}</td>`
+    + `<td>${j.totalImages}</td>`
+    + `<td style="white-space:nowrap">${dateStr} ${timeStr}</td>`
+    + `<td><span class="jhist-chip ${chipStatus}">${statusLabels[j.status]||j.status}</span></td>`
+    + `<td><button class="jhist-dl" ${hasDl?'':'disabled'} onclick="downloadHistoryJob('${j.jobId}')">⬇ DL All</button></td>`;
+    body.appendChild(tr);
+  });
+}
+
+function downloadHistoryJob(jobId) {
+  const entry = _jobHistory.find(j => j.jobId === jobId);
+  if (!entry || !entry.images.length) { toast('No images available'); return; }
+  toast(`Downloading ${entry.images.length} images…`);
+  let i = 0;
+  function next() {
+    if (i >= entry.images.length) { toast(`${entry.images.length} downloads started ✓`); return; }
+    const img = entry.images[i];
+    const url = img.public_url || img.publicUrl || img.url || img.ociUrl || '';
+    if (!url) { i++; next(); return; }
+    const shotType = img.shot_type || img.type || img.shotType || '';
+    const imgIdx   = img.image_index != null ? img.image_index : i;
+    const fname    = `vinsnap_${jobId.slice(-6)}_${String(parseInt(imgIdx)+1).padStart(3,'0')}_${shotType||'img'}.jpg`;
+    const a = document.createElement('a');
+    a.href = url; a.download = fname; a.target = '_blank';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    i++; setTimeout(next, 400);
+  }
+  next();
 }
 
 // ══ TOAST ════════════════════════════════════════════════════════════
