@@ -5,7 +5,181 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VinSnap — Batch Processing</title>
 <link rel="icon" href="data:,">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js">
+// ══ TABS ══════════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  document.querySelectorAll('.tab-page').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('page-'+tab).classList.add('active');
+  if (tab === 'jobs') loadJobs2();
+}
+
+// ══ JOBS PAGE ═════════════════════════════════════════════════════
+var _jobsPollTimer2 = null;
+var _expandedJobs2  = {};
+
+async function loadJobs2() {
+  if (!user) {
+    document.getElementById('jobsList2').innerHTML = '<div class="jobs-empty2"><div style="font-size:2rem;margin-bottom:8px">&#128274;</div><div style="font-weight:700">Sign in to view your jobs</div></div>';
+    return;
+  }
+  document.getElementById('refIco2').textContent = '...';
+  document.getElementById('jobsLoading2').style.display = 'block';
+  document.getElementById('jobsList2').innerHTML = '';
+  document.getElementById('jobsEmpty2').style.display = 'none';
+
+  try {
+    var resp = await fetch(
+      SB_URL + '/rest/v1/batch_jobs?email=eq.' + encodeURIComponent(user.email) + '&order=created_at.desc&limit=50',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    var jobs = await resp.json();
+    document.getElementById('jobsLoading2').style.display = 'none';
+    document.getElementById('refIco2').textContent = '\u{1F504}';
+
+    if (!Array.isArray(jobs) || jobs.length === 0) {
+      document.getElementById('jobsEmpty2').style.display = 'block';
+      document.getElementById('jobCount2').textContent = '';
+      return;
+    }
+    document.getElementById('jobCount2').textContent = jobs.length + ' job' + (jobs.length !== 1 ? 's' : '');
+    document.getElementById('jobsList2').innerHTML = jobs.map(renderJob2).join('');
+
+    var hasActive = jobs.some(function(j){ return j.status === 'pending' || j.status === 'running'; });
+    clearInterval(_jobsPollTimer2);
+    if (hasActive) _jobsPollTimer2 = setInterval(loadJobs2, 30000);
+  } catch(e) {
+    document.getElementById('jobsLoading2').style.display = 'none';
+    document.getElementById('refIco2').textContent = '\u{1F504}';
+    document.getElementById('jobsList2').innerHTML = '<div style="color:var(--red);font-size:.84rem;padding:20px">Failed to load jobs.</div>';
+  }
+}
+
+function renderJob2(job) {
+  var status   = job.status || 'pending';
+  var jobId    = job.batch_job_id || job.id || '';
+  var name     = job.product_name || job.productName || 'Untitled';
+  var cat      = (job.category || '').replace(/_/g,' ');
+  var subcat   = (job.subcategory || '').replace(/_/g,' ');
+  var imgCount = job.output_image_count || 0;
+  var created  = job.created_at ? new Date(job.created_at).toLocaleString() : '--';
+  var isExp    = !!_expandedJobs2[jobId];
+  var isDone   = status === 'completed' || status === 'completed_with_errors';
+
+  var statusLabels = {pending:'Pending',running:'Generating',completed:'Completed',completed_with_errors:'Completed',failed:'Failed'};
+  var statusIcons  = {pending:'&#9203;',running:'&#9881;&#65039;',completed:'&#9989;',completed_with_errors:'&#9888;&#65039;',failed:'&#10060;'};
+  var progW = {pending:12,running:55,completed:100,completed_with_errors:100,failed:100}[status] || 0;
+  var progStyle = status==='failed' ? 'background:#dc2626' : isDone ? 'background:#059669' : '';
+
+  var duration = '';
+  if (job.created_at && job.completed_at) {
+    var mins = Math.round((new Date(job.completed_at) - new Date(job.created_at)) / 60000);
+    duration = ' <span>&#9889; ' + mins + ' min</span>';
+  }
+
+  var images = [];
+  try { images = Array.isArray(job.output_images) ? job.output_images : JSON.parse(job.output_images || '[]'); } catch(e){}
+
+  // Build image tiles as plain string concat
+  var tilesHtml = '';
+  for (var i = 0; i < images.length; i++) {
+    var url = images[i].public_url || images[i].publicUrl || '';
+    tilesHtml += '<div class="img-tile2">'
+      + '<img class="img-thumb2" src="' + url + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
+      + '<div class="img-thumb-ph" style="display:none">&#128444;</div>'
+      + '<div class="img-footer2">'
+      + '<span class="img-label2">Image ' + (i+1) + '</span>'
+      + '<a class="dl-btn2" href="' + url + '" download target="_blank">&#11015; Save</a>'
+      + '</div></div>';
+  }
+
+  var imgsSection = '';
+  if (isDone && images.length > 0) {
+    imgsSection = '<div class="imgs-section2" id="imgs2-' + jobId + '" style="display:' + (isExp?'block':'none') + '">'
+      + '<div class="imgs-title2">&#128444; ' + images.length + ' image' + (images.length!==1?'s':'') + ' ready</div>'
+      + '<button class="dl-all-btn2" onclick="downloadAll2(\'' + jobId + '\',event)">&#11015; Download All (' + images.length + ')</button>'
+      + '<div class="imgs-grid2">' + tilesHtml + '</div>'
+      + '</div>';
+  }
+
+  var expandBtn = '';
+  if (isDone && images.length > 0) {
+    expandBtn = '<button class="expand-btn2" onclick="toggleExpand2(\'' + jobId + '\')">'
+      + '<span id="eico2-' + jobId + '">' + (isExp?'&#9650;':'&#9660;') + '</span>'
+      + ' <span id="elbl2-' + jobId + '">' + (isExp ? 'Hide images' : 'View ' + images.length + ' image' + (images.length!==1?'s':'')) + '</span>'
+      + '</button>';
+  } else if (isDone) {
+    expandBtn = '<span style="font-size:.78rem;color:var(--dim)">Images processing&hellip;</span>';
+  } else if (status === 'pending' || status === 'running') {
+    expandBtn = '<span style="font-size:.78rem;color:var(--dim)">Auto-refreshes every 30s</span>';
+  } else if (status === 'failed') {
+    expandBtn = '<span style="font-size:.78rem;color:var(--red)">&#10060; Failed &mdash; please resubmit</span>';
+  }
+
+  var detailCompleted = job.completed_at
+    ? '<div class="detail-item2"><span class="detail-lbl2">Completed</span><span class="detail-val2">' + new Date(job.completed_at).toLocaleTimeString() + '</span></div>'
+    : '';
+
+  return '<div class="job-card2">'
+    + '<div class="job-top2">'
+    + '<div class="job-info2">'
+    + '<div class="job-name2">' + escHtml2(name) + '</div>'
+    + '<div class="job-meta2">' + (cat ? '<span>&#128230; ' + escHtml2(cat) + (subcat ? ' &rsaquo; '+escHtml2(subcat) : '') + '</span>' : '') + '<span>&#128336; '+created+'</span>' + duration + '</div>'
+    + '<div class="job-id2">' + jobId + '</div>'
+    + '</div>'
+    + '<div class="chip chip-' + status + '">'
+    + (status==='pending'||status==='running' ? '<span class="cdot"></span>' : '')
+    + statusIcons[status] + ' ' + (statusLabels[status]||status)
+    + '</div>'
+    + '</div>'
+    + '<div class="prog-track2"><div class="prog-bar2" style="width:'+progW+'%;'+progStyle+'"></div></div>'
+    + '<div class="detail-row2">'
+    + '<div class="detail-item2"><span class="detail-lbl2">Uploaded</span><span class="detail-val2">' + (job.image_count||'--') + '</span></div>'
+    + '<div class="detail-item2"><span class="detail-lbl2">Shot Types</span><span class="detail-val2">' + (job.type_count||'--') + '</span></div>'
+    + '<div class="detail-item2"><span class="detail-lbl2">Generated</span><span class="detail-val2">' + (isDone ? imgCount : '--') + '</span></div>'
+    + detailCompleted
+    + '</div>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">' + expandBtn + '</div>'
+    + imgsSection
+    + '</div>';
+}
+
+function toggleExpand2(jobId) {
+  var el  = document.getElementById('imgs2-' + jobId);
+  var ico = document.getElementById('eico2-' + jobId);
+  var lbl = document.getElementById('elbl2-' + jobId);
+  if (!el) return;
+  var open = el.style.display === 'none';
+  el.style.display = open ? 'block' : 'none';
+  _expandedJobs2[jobId] = open;
+  if (ico) ico.innerHTML = open ? '&#9650;' : '&#9660;';
+}
+
+async function downloadAll2(jobId, e) {
+  if (e) e.preventDefault();
+  toast('Starting downloads...');
+  var el = document.getElementById('imgs2-' + jobId);
+  if (!el) return;
+  var links = el.querySelectorAll('.dl-btn2');
+  for (var i = 0; i < links.length; i++) {
+    var a = document.createElement('a');
+    a.href = links[i].href;
+    a.download = 'vinsnap_' + (i+1) + '.jpg';
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    await new Promise(function(r){ setTimeout(r, 400); });
+  }
+  toast(links.length + ' downloads started');
+}
+
+function escHtml2(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -128,6 +302,37 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .toast-el{position:fixed;bottom:24px;right:24px;background:#1a1d2e;color:#fff;padding:12px 20px;border-radius:var(--rx);font-size:.82rem;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:.3s;max-width:300px}
 .toast-el.show{transform:translateY(0);opacity:1}
 
+
+/* ── STATUS TRACKER ── */
+.scrd{background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:2px solid #10b981;border-radius:var(--r);padding:28px;text-align:center}
+.sico{font-size:2.5rem;margin-bottom:10px}
+.stitle{font-size:1.3rem;font-weight:800;color:#065f46;margin-bottom:6px}
+.ssub{color:#047857;font-size:.9rem;line-height:1.6}
+.sjob{background:#fff;border-radius:var(--rx);padding:6px 12px;margin-top:12px;font-size:.74rem;color:var(--dim);font-family:monospace;display:inline-block}
+.newbtn{margin-top:16px;padding:10px 22px;border-radius:var(--rx);border:2px solid var(--accent);background:#fff;color:var(--accent);font-family:'Outfit',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;transition:.2s}
+.newbtn:hover{background:var(--accent);color:#fff}
+.status-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.status-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:.83rem;font-weight:700;background:var(--card2);color:var(--dim2)}
+.status-chip.pending{background:#fef3c7;color:#92400e}
+.status-chip.running{background:#dbeafe;color:#1e40af}
+.status-chip.done{background:#d1fae5;color:#065f46}
+.status-chip.failed{background:#fee2e2;color:#991b1b}
+.prog-track{height:6px;background:var(--card2);border-radius:3px;overflow:hidden;margin-bottom:14px}
+.prog-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;width:0%;transition:width .5s ease}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+@media(max-width:480px){.detail-grid{grid-template-columns:1fr}}
+.detail-item{background:var(--card2);border-radius:var(--rx);padding:10px 12px}
+.detail-lbl{font-size:.72rem;color:var(--dim);display:block;margin-bottom:2px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.detail-val{font-size:.85rem;font-weight:700;color:var(--text);word-break:break-all}
+.img-link{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--card2);border-radius:var(--rx);font-size:.82rem;text-decoration:none;color:var(--text);transition:.2s;border:1.5px solid transparent}
+.img-link:hover{border-color:var(--accent);background:#f0f0ff}
+.img-link-label{font-weight:600}
+.img-link-sub{font-size:.72rem;color:var(--dim);margin-top:1px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.5s ease infinite}
+.pulse-dot.done{background:var(--green);animation:none}
+.pulse-dot.failed{background:var(--red);animation:none}
+
 /* avatar + location CSS from index_6 */
 .av-country-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:14px 20px 10px}
 .av-country-tab{font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;transition:.2s;background:var(--card2)}
@@ -175,6 +380,57 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 
 /* ── ANALYSE BUTTON ── */
 
+/* ── TABS ── */
+.tab-bar{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:0;background:#fff;position:sticky;top:60px;z-index:99;padding:0 24px}
+.tab-btn{padding:14px 20px;font-family:'Outfit',sans-serif;font-size:.88rem;font-weight:600;color:var(--dim);background:none;border:none;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:.2s;white-space:nowrap}
+.tab-btn:hover{color:var(--accent)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-page{display:none}.tab-page.active{display:block}
+/* ── JOBS PAGE ── */
+.toolbar2{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.refresh-btn2{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--rx);border:1.5px solid var(--border);background:#fff;color:var(--dim2);font-family:'Outfit',sans-serif;font-size:.84rem;font-weight:600;cursor:pointer;transition:.2s}
+.refresh-btn2:hover{border-color:var(--accent);color:var(--accent)}
+.job-count2{font-size:.82rem;color:var(--dim);font-weight:500}
+.job-card2{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:20px;margin-bottom:14px;box-shadow:var(--sh);transition:.2s}
+.job-card2:hover{box-shadow:0 6px 32px rgba(99,102,241,.13)}
+.job-top2{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.job-info2{flex:1;min-width:0}
+.job-name2{font-size:1rem;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.job-meta2{font-size:.76rem;color:var(--dim);display:flex;gap:12px;flex-wrap:wrap;margin-top:4px}
+.job-id2{font-size:.72rem;color:var(--dim);font-family:monospace;margin-top:3px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:700;flex-shrink:0}
+.chip-pending{background:#fef3c7;color:#92400e}
+.chip-running{background:#dbeafe;color:#1e40af}
+.chip-completed{background:#d1fae5;color:#065f46}
+.chip-completed_with_errors{background:#fef3c7;color:#92400e}
+.chip-failed{background:#fee2e2;color:#991b1b}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.chip .cdot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:blink 1.4s ease infinite;flex-shrink:0}
+.prog-track2{height:5px;background:var(--card2);border-radius:3px;margin-bottom:14px;overflow:hidden}
+.prog-bar2{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s ease}
+.detail-row2{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px}
+.detail-item2{background:var(--card2);border-radius:var(--rx);padding:9px 12px}
+.detail-lbl2{font-size:.68rem;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:2px}
+.detail-val2{font-size:.84rem;font-weight:700;color:var(--text)}
+.imgs-section2{border-top:1px solid var(--border);padding-top:14px;margin-top:2px}
+.imgs-title2{font-size:.82rem;font-weight:700;color:var(--green);margin-bottom:10px}
+.imgs-grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.img-tile2{border:1.5px solid var(--border);border-radius:var(--rs);overflow:hidden;transition:.2s;background:var(--card2)}
+.img-tile2:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 6px 20px rgba(99,102,241,.15)}
+.img-thumb2{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.img-thumb-ph{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:2rem;background:var(--card2)}
+.img-footer2{padding:8px 10px;display:flex;align-items:center;justify-content:space-between}
+.img-label2{font-size:.72rem;font-weight:600;color:var(--dim2)}
+.dl-btn2{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Outfit',sans-serif;font-size:.72rem;font-weight:700;text-decoration:none;transition:.2s}
+.dl-btn2:hover{opacity:.85}
+.dl-all-btn2{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:var(--rx);background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Outfit',sans-serif;font-size:.84rem;font-weight:700;border:none;cursor:pointer;transition:.2s;margin-bottom:12px}
+.dl-all-btn2:hover{opacity:.9}
+.expand-btn2{background:none;border:none;color:var(--accent);font-family:'Outfit',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px}
+.expand-btn2:hover{text-decoration:underline}
+.jobs-empty2{text-align:center;padding:60px 20px;color:var(--dim)}
+@keyframes spin2{to{transform:rotate(360deg)}}
+.spinner2{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin2 .7s linear infinite;margin:0 auto 14px}
+
 </style>
 </head>
 <body>
@@ -188,6 +444,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
   </div>
 </header>
 
+
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-batch" onclick="switchTab('batch')">&#9889; Batch Processing</button>
+  <button class="tab-btn" id="tab-jobs" onclick="switchTab('jobs')">&#128203; My Jobs</button>
+</div>
+<div id="page-batch" class="tab-page active">
 <main class="pg" id="mainForm">
   <div class="ptitle">⚡ <span>Batch Processing</span></div>
   <div class="psub">Upload up to 10 product images — generated images will be emailed to you in ~30 minutes.</div>
@@ -654,18 +916,101 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
   <div id="submitErr" style="color:var(--red);font-size:.82rem;margin-top:10px;text-align:center"></div>
 </main>
 
-<!-- SUCCESS -->
+<!-- SUCCESS + STATUS TRACKER -->
 <div class="pg" id="successPanel">
-  <div class="scrd">
+
+  <!-- Submitted card -->
+  <div class="scrd" style="margin-bottom:16px">
     <div class="sico">✅</div>
     <div class="stitle">Batch Submitted!</div>
     <div class="ssub">
-      Your <strong id="sCount">0</strong> images are being generated.<br>
-      Results will be emailed to <strong id="sEmail"></strong> in approximately <strong>30 minutes</strong>.
+      <strong id="sCount">0</strong> images queued for <strong id="sEmail"></strong>.<br>
+      Results will be emailed when complete.
     </div>
     <div class="sjob" id="sJobId"></div>
-    <button class="newbtn" onclick="resetAll()">Submit Another Batch</button>
   </div>
+
+  <!-- Live status card -->
+  <div class="card" id="statusCard">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="ctitle" style="margin:0">📊 Job Status</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="pulse-dot" id="pulseDot"></div>
+        <span id="refreshLabel" style="font-size:.76rem;color:var(--dim)">Checking…</span>
+      </div>
+    </div>
+
+    <!-- Status row -->
+    <div class="status-row">
+      <div class="status-chip" id="statusChip">
+        <span id="statusIco">⏳</span>
+        <span id="statusTxt">Pending</span>
+      </div>
+      <div style="font-size:.78rem;color:var(--dim)" id="statusTime"></div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="prog-track" id="progTrack" style="display:none">
+      <div class="prog-bar" id="progBar"></div>
+    </div>
+
+    <!-- Job details -->
+    <div class="detail-grid" id="detailGrid" style="display:none">
+      <div class="detail-item"><span class="detail-lbl">Job ID</span><span class="detail-val" id="dJobId">—</span></div>
+      <div class="detail-item"><span class="detail-lbl">Images</span><span class="detail-val" id="dImages">—</span></div>
+      <div class="detail-item"><span class="detail-lbl">Types</span><span class="detail-val" id="dTypes">—</span></div>
+      <div class="detail-item"><span class="detail-lbl">Submitted</span><span class="detail-val" id="dCreated">—</span></div>
+    </div>
+
+    <!-- Done: image links -->
+    <div id="doneSection" style="display:none">
+      <div style="font-size:.85rem;font-weight:600;color:var(--green);margin:14px 0 10px">
+        ✅ Generation complete — <span id="doneCount">0</span> images ready
+      </div>
+      <div id="imageLinks" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+
+    <!-- Failed -->
+    <div id="failedSection" style="display:none">
+      <div style="font-size:.85rem;color:var(--red);margin-top:14px">
+        ❌ Batch job failed. Please try submitting again.
+      </div>
+    </div>
+
+    <!-- Refresh button -->
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="newbtn" onclick="pollStatus()" id="refreshBtn" style="margin:0;padding:8px 18px;font-size:.82rem">
+        🔄 Refresh Now
+      </button>
+      <button class="newbtn" onclick="resetAll()" style="margin:0;padding:8px 18px;font-size:.82rem;border-color:var(--dim);color:var(--dim)">
+        + New Batch
+      </button>
+    </div>
+  </div>
+
+</div>
+
+</div><!-- /page-batch -->
+
+<div id="page-jobs" class="tab-page">
+<div class="pg">
+  <div class="ptitle" style="margin-bottom:4px">&#128203; <span style="background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">My Jobs</span></div>
+  <div class="psub">Live status and image downloads for all your batch jobs.</div>
+  <div class="toolbar2">
+    <div class="job-count2" id="jobCount2"></div>
+    <button class="refresh-btn2" onclick="loadJobs2()"><span id="refIco2">&#128260;</span> Refresh</button>
+  </div>
+  <div id="jobsLoading2" style="text-align:center;padding:60px 20px;display:none">
+    <div class="spinner2"></div>
+    <div style="color:var(--dim);font-size:.9rem">Loading jobs&hellip;</div>
+  </div>
+  <div id="jobsList2"></div>
+  <div id="jobsEmpty2" class="jobs-empty2" style="display:none">
+    <div style="font-size:2.5rem;margin-bottom:10px">&#128444;</div>
+    <div style="font-weight:700;margin-bottom:6px;color:var(--dim2)">No jobs yet</div>
+    <div style="font-size:.86rem">Submit a batch and your jobs will appear here.</div>
+  </div>
+</div>
 </div>
 
 <!-- AUTH MODAL -->
@@ -687,7 +1032,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 // ══ CONFIG ═══════════════════════════════════════════════════════════
 const SB_URL  = 'https://rqzflfyqazklfnfxefct.supabase.co';
 const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxemZsZnlxYXprbGZuZnhlZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMjgxMDIsImV4cCI6MjA5MTgwNDEwMn0.q3F9dEDdNQ7kBGtReTQx6r8wvgGks5lL-ThZAi2uPEY';
-const WEBHOOK = 'https://n8n.vinmediaai.online/webhook/vinsnap-batch-submit';
+const WEBHOOK_A  = 'https://vinsnap-init-h5clk64lsa-uc.a.run.app';   // Step 1: get jobId
+const WEBHOOK_B  = 'https://vinsnap-process-h5clk64lsa-uc.a.run.app';   // Step 3: trigger processing
+const GCS_BUCKET = 'vinsnap-batch-us';
 const { createClient } = window.supabase;
 const sb = createClient(SB_URL, SB_KEY);
 
@@ -905,36 +1252,220 @@ async function doSubmit() {
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
-  document.getElementById('submitLbl').innerHTML = '<span class="spin"></span> Submitting…';
 
-  const payload = {
+  const config = {
     productName: name, category: cat, subcategory: sub,
     email: user.email, mode: genMode,
     avatarId:        genMode==='custom' ? avatarId        : 'dynamic',
     avatarCountry:   genMode==='custom' ? avatarCountry   : 'india',
     locationVariant: genMode==='custom' ? locationVariant : 'dynamic',
     selectedTypes: types,
-    images: uploads.map(u=>({ base64:u.base64, mimeType:u.mimeType, index:u.index }))
+    imageCount: uploads.length
   };
 
   try {
-    const resp = await fetch(WEBHOOK, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const result = await resp.json();
-    document.getElementById('mainForm').style.display    = 'none';
-    document.getElementById('successPanel').style.display = 'block';
-    document.getElementById('sCount').textContent  = uploads.length * types.length;
-    document.getElementById('sEmail').textContent  = user.email;
-    document.getElementById('sJobId').textContent  = `Job ID: ${result.jobId||'submitted'}`;
+    // STEP 1: Get jobId + GCS upload URLs from Webhook A
+    setSubmitStep('Getting job ID…', 10);
+    const respA = await fetch(WEBHOOK_A, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(config)
+    });
+    if (!respA.ok) throw new Error('Step 1 failed: HTTP ' + respA.status);
+    const initData = await respA.json();
+    const { jobId, gcsUploadPaths } = initData;
+    if (!jobId) throw new Error('No job ID returned');
+
+    // STEP 2: Upload each image directly to GCS public bucket
+    setSubmitStep('Uploading ' + uploads.length + ' image(s) to cloud…', 30);
+    await uploadImagesToGCS(uploads, gcsUploadPaths);
+    setSubmitStep('Images uploaded ✓', 70);
+
+    // STEP 3: Trigger processing via Webhook B (tiny payload, no images)
+    setSubmitStep('Starting generation…', 85);
+    const gcsUris = gcsUploadPaths.map(p => p.gcsUri);
+    const respB = await fetch(WEBHOOK_B, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(Object.assign({}, config, { jobId, gcsUris }))
+    });
+    if (!respB.ok) throw new Error('Step 3 failed: HTTP ' + respB.status);
+    await respB.json();
+
+    setSubmitStep('Submitted ✓', 100);
+    showStatusPanel(jobId, uploads.length * types.length, user.email);
+
   } catch(e) {
     showErr('Submission failed — ' + e.message);
     btn.disabled = false;
-    document.getElementById('submitLbl').textContent = '⚡ Submit Batch';
+    document.getElementById('submitLbl').innerHTML = '⚡ Submit Batch';
   }
+}
+
+// Upload all images directly to GCS public bucket (browser PUT)
+async function uploadImagesToGCS(uploadedFiles, gcsUploadPaths) {
+  const promises = uploadedFiles.map(async (u, i) => {
+    const pathInfo = gcsUploadPaths[i];
+    if (!pathInfo) throw new Error('No GCS path for image ' + i);
+    const byteStr = atob(u.base64);
+    const arr     = new Uint8Array(byteStr.length);
+    for (let j=0; j<byteStr.length; j++) arr[j] = byteStr.charCodeAt(j);
+    const blob = new Blob([arr], { type: u.mimeType || 'image/jpeg' });
+    const resp = await fetch(pathInfo.uploadUrl, {
+      method:  'PUT',
+      headers: { 'Content-Type': u.mimeType || 'image/jpeg' },
+      body:    blob
+    });
+    if (!resp.ok) {
+      const txt = await resp.text().catch(()=>'');
+      throw new Error('Image ' + (i+1) + ' upload failed: ' + resp.status + ' ' + txt.slice(0,80));
+    }
+    return { index: i, gcsUri: pathInfo.gcsUri, success: true };
+  });
+  return Promise.all(promises);
+}
+
+function setSubmitStep(msg) {
+  document.getElementById('submitLbl').innerHTML = '<span class="spin"></span> ' + msg;
 }
 function showErr(msg) { document.getElementById('submitErr').textContent=msg; }
 
+// ══ STATUS TRACKER ══════════════════════════════════════════════════
+let _currentJobId = null;
+let _pollTimer    = null;
+const POLL_INTERVAL = 30000; // 30 seconds
+
+function showStatusPanel(jobId, totalImages, email) {
+  _currentJobId = jobId;
+  document.getElementById('mainForm').style.display    = 'none';
+  document.getElementById('successPanel').style.display = 'block';
+  document.getElementById('sCount').textContent  = totalImages;
+  document.getElementById('sEmail').textContent  = email;
+  document.getElementById('sJobId').textContent  = 'Job ID: ' + jobId;
+  document.getElementById('dJobId').textContent  = jobId;
+  document.getElementById('detailGrid').style.display = 'grid';
+  setStatusChip('pending');
+  startPolling();
+}
+
+function startPolling() {
+  clearInterval(_pollTimer);
+  pollStatus();
+  _pollTimer = setInterval(pollStatus, POLL_INTERVAL);
+}
+
+async function pollStatus() {
+  if (!_currentJobId) return;
+  document.getElementById('refreshLabel').textContent = 'Checking…';
+  try {
+    const resp = await fetch(
+      `${SB_URL}/rest/v1/batch_jobs?batch_job_id=eq.${encodeURIComponent(_currentJobId)}&select=*`,
+      { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } }
+    );
+    const rows = await resp.json();
+    if (!rows || !rows.length) {
+      document.getElementById('refreshLabel').textContent = 'Job not found';
+      return;
+    }
+    const job = rows[0];
+    applyJobStatus(job);
+    const now = new Date().toLocaleTimeString();
+    document.getElementById('refreshLabel').textContent = 'Updated ' + now;
+  } catch(e) {
+    document.getElementById('refreshLabel').textContent = 'Check failed';
+  }
+}
+
+function applyJobStatus(job) {
+  const status = job.status || 'pending';
+  setStatusChip(status);
+
+  // Detail grid
+  if (job.image_count) document.getElementById('dImages').textContent = job.image_count + ' uploaded';
+  if (job.type_count)  document.getElementById('dTypes').textContent  = job.type_count + ' types → ' + (job.image_count * job.type_count) + ' images';
+  if (job.created_at)  document.getElementById('dCreated').textContent = new Date(job.created_at).toLocaleString();
+
+  // Progress bar animation for running/pending
+  const prog = document.getElementById('progTrack');
+  const bar  = document.getElementById('progBar');
+  if (status === 'pending' || status === 'running') {
+    prog.style.display = 'block';
+    // Animate indeterminate — just fill to 60% while waiting
+    setTimeout(() => bar.style.width = '65%', 100);
+  } else if (status === 'done') {
+    prog.style.display = 'block';
+    bar.style.width = '100%';
+    clearInterval(_pollTimer);
+    showDoneSection(job);
+  } else if (status === 'failed') {
+    prog.style.display = 'none';
+    clearInterval(_pollTimer);
+    document.getElementById('failedSection').style.display = 'block';
+  }
+
+  // Completed time
+  if (job.completed_at) {
+    const mins = Math.round((new Date(job.completed_at) - new Date(job.created_at)) / 60000);
+    document.getElementById('statusTime').textContent = `Completed in ${mins} min`;
+  }
+}
+
+function setStatusChip(status) {
+  const chip = document.getElementById('statusChip');
+  const dot  = document.getElementById('pulseDot');
+  const ico  = document.getElementById('statusIco');
+  const txt  = document.getElementById('statusTxt');
+  chip.className = 'status-chip ' + status;
+  dot.className  = 'pulse-dot ' + (status === 'done' || status === 'failed' ? status : '');
+  const map = {
+    pending: ['⏳','Pending'],
+    running: ['⚙️','Generating'],
+    done:    ['✅','Complete'],
+    failed:  ['❌','Failed']
+  };
+  [ico.textContent, txt.textContent] = map[status] || ['⏳','Pending'];
+}
+
+function showDoneSection(job) {
+  const section = document.getElementById('doneSection');
+  section.style.display = 'block';
+  let links = [];
+  try { links = JSON.parse(job.oci_image_urls || '[]'); } catch(e) {}
+  const successLinks = links.filter(l => l.success);
+  document.getElementById('doneCount').textContent = successLinks.length;
+
+  const container = document.getElementById('imageLinks');
+  container.innerHTML = '';
+
+  // Group by image index
+  const grouped = {};
+  successLinks.forEach(l => {
+    const parts = (l.customId || l.ociKey || '').split('_');
+    const imgPart = parts.find(p => p.startsWith('img'));
+    const idx = imgPart ? imgPart.replace('img','') : '?';
+    const type = parts[parts.length - 1] || 'image';
+    if (!grouped[idx]) grouped[idx] = [];
+    grouped[idx].push({ type, url: l.ociUrl || l.url });
+  });
+
+  const typeLabels = { hero:'Hero', lifestyle1:'Lifestyle 1', lifestyle2:'Lifestyle 2', lifestyle3:'Lifestyle 3' };
+  Object.entries(grouped).forEach(([idx, items]) => {
+    items.forEach(item => {
+      const a = document.createElement('a');
+      a.href = item.url; a.target = '_blank'; a.className = 'img-link';
+      a.innerHTML = `<div><div class="img-link-label">Image ${parseInt(idx)+1} — ${typeLabels[item.type]||item.type}</div><div class="img-link-sub">${item.url.split('/').pop()}</div></div><span style="color:var(--accent);font-size:.85rem;flex-shrink:0">↗ Open</span>`;
+      container.appendChild(a);
+    });
+  });
+
+  if (!successLinks.length) {
+    container.innerHTML = '<div style="font-size:.82rem;color:var(--dim)">Links will appear here. Check your email if they don\'t load.</div>';
+  }
+}
+
 function resetAll() {
+  clearInterval(_pollTimer);
+  _currentJobId = null;
   uploads=[]; avatarId='dynamic'; avatarCountry='india'; locationVariant=''; genMode='dynamic';
   document.getElementById('thumbGrid').innerHTML = '';
   document.getElementById('productName').value   = '';
@@ -946,6 +1477,14 @@ function resetAll() {
   document.getElementById('mainForm').style.display    = 'block';
   document.getElementById('successPanel').style.display = 'none';
   document.getElementById('submitLbl').textContent     = '⚡ Submit Batch';
+  // Reset status UI
+  document.getElementById('statusChip').className = 'status-chip pending';
+  document.getElementById('progTrack').style.display = 'none';
+  document.getElementById('progBar').style.width = '0%';
+  document.getElementById('doneSection').style.display = 'none';
+  document.getElementById('failedSection').style.display = 'none';
+  document.getElementById('detailGrid').style.display = 'none';
+  document.getElementById('imageLinks').innerHTML = '';
   checkReady();
 }
 
@@ -956,6 +1495,180 @@ function toast(msg, dur=3000) {
   el.textContent=msg; el.classList.add('show');
   clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'), dur);
 }
+
+// ══ TABS ══════════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  document.querySelectorAll('.tab-page').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('page-'+tab).classList.add('active');
+  if (tab === 'jobs') loadJobs2();
+}
+
+// ══ JOBS PAGE ═════════════════════════════════════════════════════
+var _jobsPollTimer2 = null;
+var _expandedJobs2  = {};
+
+async function loadJobs2() {
+  if (!user) {
+    document.getElementById('jobsList2').innerHTML = '<div class="jobs-empty2"><div style="font-size:2rem;margin-bottom:8px">&#128274;</div><div style="font-weight:700">Sign in to view your jobs</div></div>';
+    return;
+  }
+  document.getElementById('refIco2').textContent = '...';
+  document.getElementById('jobsLoading2').style.display = 'block';
+  document.getElementById('jobsList2').innerHTML = '';
+  document.getElementById('jobsEmpty2').style.display = 'none';
+
+  try {
+    var resp = await fetch(
+      SB_URL + '/rest/v1/batch_jobs?email=eq.' + encodeURIComponent(user.email) + '&order=created_at.desc&limit=50',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    var jobs = await resp.json();
+    document.getElementById('jobsLoading2').style.display = 'none';
+    document.getElementById('refIco2').textContent = '\u{1F504}';
+
+    if (!Array.isArray(jobs) || jobs.length === 0) {
+      document.getElementById('jobsEmpty2').style.display = 'block';
+      document.getElementById('jobCount2').textContent = '';
+      return;
+    }
+    document.getElementById('jobCount2').textContent = jobs.length + ' job' + (jobs.length !== 1 ? 's' : '');
+    document.getElementById('jobsList2').innerHTML = jobs.map(renderJob2).join('');
+
+    var hasActive = jobs.some(function(j){ return j.status === 'pending' || j.status === 'running'; });
+    clearInterval(_jobsPollTimer2);
+    if (hasActive) _jobsPollTimer2 = setInterval(loadJobs2, 30000);
+  } catch(e) {
+    document.getElementById('jobsLoading2').style.display = 'none';
+    document.getElementById('refIco2').textContent = '\u{1F504}';
+    document.getElementById('jobsList2').innerHTML = '<div style="color:var(--red);font-size:.84rem;padding:20px">Failed to load jobs.</div>';
+  }
+}
+
+function renderJob2(job) {
+  var status   = job.status || 'pending';
+  var jobId    = job.batch_job_id || job.id || '';
+  var name     = job.product_name || job.productName || 'Untitled';
+  var cat      = (job.category || '').replace(/_/g,' ');
+  var subcat   = (job.subcategory || '').replace(/_/g,' ');
+  var imgCount = job.output_image_count || 0;
+  var created  = job.created_at ? new Date(job.created_at).toLocaleString() : '--';
+  var isExp    = !!_expandedJobs2[jobId];
+  var isDone   = status === 'completed' || status === 'completed_with_errors';
+
+  var statusLabels = {pending:'Pending',running:'Generating',completed:'Completed',completed_with_errors:'Completed',failed:'Failed'};
+  var statusIcons  = {pending:'&#9203;',running:'&#9881;&#65039;',completed:'&#9989;',completed_with_errors:'&#9888;&#65039;',failed:'&#10060;'};
+  var progW = {pending:12,running:55,completed:100,completed_with_errors:100,failed:100}[status] || 0;
+  var progStyle = status==='failed' ? 'background:#dc2626' : isDone ? 'background:#059669' : '';
+
+  var duration = '';
+  if (job.created_at && job.completed_at) {
+    var mins = Math.round((new Date(job.completed_at) - new Date(job.created_at)) / 60000);
+    duration = ' <span>&#9889; ' + mins + ' min</span>';
+  }
+
+  var images = [];
+  try { images = Array.isArray(job.output_images) ? job.output_images : JSON.parse(job.output_images || '[]'); } catch(e){}
+
+  // Build image tiles as plain string concat
+  var tilesHtml = '';
+  for (var i = 0; i < images.length; i++) {
+    var url = images[i].public_url || images[i].publicUrl || '';
+    tilesHtml += '<div class="img-tile2">'
+      + '<img class="img-thumb2" src="' + url + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
+      + '<div class="img-thumb-ph" style="display:none">&#128444;</div>'
+      + '<div class="img-footer2">'
+      + '<span class="img-label2">Image ' + (i+1) + '</span>'
+      + '<a class="dl-btn2" href="' + url + '" download target="_blank">&#11015; Save</a>'
+      + '</div></div>';
+  }
+
+  var imgsSection = '';
+  if (isDone && images.length > 0) {
+    imgsSection = '<div class="imgs-section2" id="imgs2-' + jobId + '" style="display:' + (isExp?'block':'none') + '">'
+      + '<div class="imgs-title2">&#128444; ' + images.length + ' image' + (images.length!==1?'s':'') + ' ready</div>'
+      + '<button class="dl-all-btn2" onclick="downloadAll2(\'' + jobId + '\',event)">&#11015; Download All (' + images.length + ')</button>'
+      + '<div class="imgs-grid2">' + tilesHtml + '</div>'
+      + '</div>';
+  }
+
+  var expandBtn = '';
+  if (isDone && images.length > 0) {
+    expandBtn = '<button class="expand-btn2" onclick="toggleExpand2(\'' + jobId + '\')">'
+      + '<span id="eico2-' + jobId + '">' + (isExp?'&#9650;':'&#9660;') + '</span>'
+      + ' <span id="elbl2-' + jobId + '">' + (isExp ? 'Hide images' : 'View ' + images.length + ' image' + (images.length!==1?'s':'')) + '</span>'
+      + '</button>';
+  } else if (isDone) {
+    expandBtn = '<span style="font-size:.78rem;color:var(--dim)">Images processing&hellip;</span>';
+  } else if (status === 'pending' || status === 'running') {
+    expandBtn = '<span style="font-size:.78rem;color:var(--dim)">Auto-refreshes every 30s</span>';
+  } else if (status === 'failed') {
+    expandBtn = '<span style="font-size:.78rem;color:var(--red)">&#10060; Failed &mdash; please resubmit</span>';
+  }
+
+  var detailCompleted = job.completed_at
+    ? '<div class="detail-item2"><span class="detail-lbl2">Completed</span><span class="detail-val2">' + new Date(job.completed_at).toLocaleTimeString() + '</span></div>'
+    : '';
+
+  return '<div class="job-card2">'
+    + '<div class="job-top2">'
+    + '<div class="job-info2">'
+    + '<div class="job-name2">' + escHtml2(name) + '</div>'
+    + '<div class="job-meta2">' + (cat ? '<span>&#128230; ' + escHtml2(cat) + (subcat ? ' &rsaquo; '+escHtml2(subcat) : '') + '</span>' : '') + '<span>&#128336; '+created+'</span>' + duration + '</div>'
+    + '<div class="job-id2">' + jobId + '</div>'
+    + '</div>'
+    + '<div class="chip chip-' + status + '">'
+    + (status==='pending'||status==='running' ? '<span class="cdot"></span>' : '')
+    + statusIcons[status] + ' ' + (statusLabels[status]||status)
+    + '</div>'
+    + '</div>'
+    + '<div class="prog-track2"><div class="prog-bar2" style="width:'+progW+'%;'+progStyle+'"></div></div>'
+    + '<div class="detail-row2">'
+    + '<div class="detail-item2"><span class="detail-lbl2">Uploaded</span><span class="detail-val2">' + (job.image_count||'--') + '</span></div>'
+    + '<div class="detail-item2"><span class="detail-lbl2">Shot Types</span><span class="detail-val2">' + (job.type_count||'--') + '</span></div>'
+    + '<div class="detail-item2"><span class="detail-lbl2">Generated</span><span class="detail-val2">' + (isDone ? imgCount : '--') + '</span></div>'
+    + detailCompleted
+    + '</div>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">' + expandBtn + '</div>'
+    + imgsSection
+    + '</div>';
+}
+
+function toggleExpand2(jobId) {
+  var el  = document.getElementById('imgs2-' + jobId);
+  var ico = document.getElementById('eico2-' + jobId);
+  var lbl = document.getElementById('elbl2-' + jobId);
+  if (!el) return;
+  var open = el.style.display === 'none';
+  el.style.display = open ? 'block' : 'none';
+  _expandedJobs2[jobId] = open;
+  if (ico) ico.innerHTML = open ? '&#9650;' : '&#9660;';
+}
+
+async function downloadAll2(jobId, e) {
+  if (e) e.preventDefault();
+  toast('Starting downloads...');
+  var el = document.getElementById('imgs2-' + jobId);
+  if (!el) return;
+  var links = el.querySelectorAll('.dl-btn2');
+  for (var i = 0; i < links.length; i++) {
+    var a = document.createElement('a');
+    a.href = links[i].href;
+    a.download = 'vinsnap_' + (i+1) + '.jpg';
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    await new Promise(function(r){ setTimeout(r, 400); });
+  }
+  toast(links.length + ' downloads started');
+}
+
+function escHtml2(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 </script>
 </body>
 </html>
