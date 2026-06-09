@@ -6,177 +6,147 @@
 <title>VinSnap — Batch Processing</title>
 <link rel="icon" href="data:,">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js">
-// ══ TABS ══════════════════════════════════════════════════════════
-function switchTab(tab) {
-  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
-  document.querySelectorAll('.tab-page').forEach(function(p){p.classList.remove('active');});
-  document.getElementById('tab-'+tab).classList.add('active');
-  document.getElementById('page-'+tab).classList.add('active');
-  if (tab === 'jobs') loadJobs2();
+// ══ TABS ══════════════════════════════════════════════════════════════════
+function switchTab(t) {
+  ["batch","jobs"].forEach(function(n) {
+    document.getElementById("tab-"+n).classList.toggle("active", n===t);
+    document.getElementById("page-"+n).classList.toggle("active", n===t);
+  });
+  if (t === "jobs") loadJobs();
 }
 
-// ══ JOBS PAGE ═════════════════════════════════════════════════════
-var _jobsPollTimer2 = null;
-var _expandedJobs2  = {};
+// ══ JOBS PAGE ════════════════════════════════════════════════════════════════
+var _jPoll = null;
+var _jExp  = {};
 
-async function loadJobs2() {
+function loadJobs() {
   if (!user) {
-    document.getElementById('jobsList2').innerHTML = '<div class="jobs-empty2"><div style="font-size:2rem;margin-bottom:8px">&#128274;</div><div style="font-weight:700">Sign in to view your jobs</div></div>';
+    document.getElementById("jList").innerHTML = "<div class=\"j-empty\"><div style=\"font-size:2rem;margin-bottom:8px\">&#128274;</div><div style=\"font-weight:700\">Sign in to view your jobs</div></div>";
+    document.getElementById("jLoading").style.display = "none";
     return;
   }
-  document.getElementById('refIco2').textContent = '...';
-  document.getElementById('jobsLoading2').style.display = 'block';
-  document.getElementById('jobsList2').innerHTML = '';
-  document.getElementById('jobsEmpty2').style.display = 'none';
+  document.getElementById("jRefIco").innerHTML = "&#8987;";
+  document.getElementById("jLoading").style.display = "block";
+  document.getElementById("jList").innerHTML = "";
+  document.getElementById("jEmpty").style.display = "none";
 
-  try {
-    var resp = await fetch(
-      SB_URL + '/rest/v1/batch_jobs?email=eq.' + encodeURIComponent(user.email) + '&order=created_at.desc&limit=50',
-      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
-    );
-    var jobs = await resp.json();
-    document.getElementById('jobsLoading2').style.display = 'none';
-    document.getElementById('refIco2').textContent = '\u{1F504}';
-
+  fetch(SB_URL + "/rest/v1/batch_jobs?email=eq." + encodeURIComponent(user.email)
+        + "&order=created_at.desc&limit=100",
+    { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } })
+  .then(function(r) { return r.json(); })
+  .then(function(jobs) {
+    document.getElementById("jLoading").style.display = "none";
+    document.getElementById("jRefIco").innerHTML = "&#128260;";
     if (!Array.isArray(jobs) || jobs.length === 0) {
-      document.getElementById('jobsEmpty2').style.display = 'block';
-      document.getElementById('jobCount2').textContent = '';
+      document.getElementById("jEmpty").style.display = "block";
+      document.getElementById("jCount").textContent = "";
       return;
     }
-    document.getElementById('jobCount2').textContent = jobs.length + ' job' + (jobs.length !== 1 ? 's' : '');
-    document.getElementById('jobsList2').innerHTML = jobs.map(renderJob2).join('');
-
-    var hasActive = jobs.some(function(j){ return j.status === 'pending' || j.status === 'running'; });
-    clearInterval(_jobsPollTimer2);
-    if (hasActive) _jobsPollTimer2 = setInterval(loadJobs2, 30000);
-  } catch(e) {
-    document.getElementById('jobsLoading2').style.display = 'none';
-    document.getElementById('refIco2').textContent = '\u{1F504}';
-    document.getElementById('jobsList2').innerHTML = '<div style="color:var(--red);font-size:.84rem;padding:20px">Failed to load jobs.</div>';
-  }
+    document.getElementById("jCount").textContent = jobs.length + " job" + (jobs.length !== 1 ? "s" : "");
+    document.getElementById("jList").innerHTML = jobs.map(renderJob).join("");
+    Object.keys(_jExp).forEach(function(id) {
+      var el = document.getElementById("jimgs-"+id);
+      if (el && _jExp[id]) el.style.display = "block";
+    });
+    var hasActive = jobs.some(function(j) { return j.status === "pending" || j.status === "running"; });
+    clearInterval(_jPoll);
+    if (hasActive) _jPoll = setInterval(loadJobs, 20000);
+  })
+  .catch(function(e) {
+    document.getElementById("jLoading").style.display = "none";
+    document.getElementById("jRefIco").innerHTML = "&#128260;";
+    document.getElementById("jList").innerHTML = "<div style=\"color:var(--red);padding:20px;font-size:.84rem\">Failed to load jobs: " + e.message + "</div>";
+  });
 }
 
-function renderJob2(job) {
-  var status   = job.status || 'pending';
-  var jobId    = job.batch_job_id || job.id || '';
-  var name     = job.product_name || job.productName || 'Untitled';
-  var cat      = (job.category || '').replace(/_/g,' ');
-  var subcat   = (job.subcategory || '').replace(/_/g,' ');
+function renderJob(job) {
+  var status   = job.status || "pending";
+  var jobId    = job.batch_job_id || job.id || "";
+  var name     = job.product_name || job.productName || job.product || "Untitled";
+  var cat      = (job.category || "").replace(/_/g," ");
+  var subcat   = (job.subcategory || "").replace(/_/g," ");
   var imgCount = job.output_image_count || 0;
-  var created  = job.created_at ? new Date(job.created_at).toLocaleString() : '--';
-  var isExp    = !!_expandedJobs2[jobId];
-  var isDone   = status === 'completed' || status === 'completed_with_errors';
+  var created  = job.created_at ? new Date(job.created_at).toLocaleString() : "--";
+  var isDone   = status === "completed" || status === "completed_with_errors";
+  var isActive = status === "pending" || status === "running";
+  var isExp    = !!_jExp[jobId];
 
-  var statusLabels = {pending:'Pending',running:'Generating',completed:'Completed',completed_with_errors:'Completed',failed:'Failed'};
-  var statusIcons  = {pending:'&#9203;',running:'&#9881;&#65039;',completed:'&#9989;',completed_with_errors:'&#9888;&#65039;',failed:'&#10060;'};
-  var progW = {pending:12,running:55,completed:100,completed_with_errors:100,failed:100}[status] || 0;
-  var progStyle = status==='failed' ? 'background:#dc2626' : isDone ? 'background:#059669' : '';
+  var chipIco = {pending:"&#9203;",running:"&#9881;",completed:"&#9989;",completed_with_errors:"&#9888;",failed:"&#10060;"}[status] || "";
+  var chipLbl = {pending:"Pending",running:"Generating",completed:"Completed",completed_with_errors:"Completed",failed:"Failed"}[status] || status;
+  var progW   = {pending:10,running:55,completed:100,completed_with_errors:100,failed:100}[status] || 0;
+  var progClr = status==="failed" ? "background:#dc2626" : isDone ? "background:#059669" : "";
 
-  var duration = '';
+  var dur = "";
   if (job.created_at && job.completed_at) {
     var mins = Math.round((new Date(job.completed_at) - new Date(job.created_at)) / 60000);
-    duration = ' <span>&#9889; ' + mins + ' min</span>';
+    dur = "<span>&#9889; " + mins + "min</span>";
   }
 
   var images = [];
-  try { images = Array.isArray(job.output_images) ? job.output_images : JSON.parse(job.output_images || '[]'); } catch(e){}
+  try { images = Array.isArray(job.output_images) ? job.output_images : JSON.parse(job.output_images || "[]"); } catch(e) {}
 
-  // Build image tiles as plain string concat
-  var tilesHtml = '';
+  var tiles = "";
   for (var i = 0; i < images.length; i++) {
-    var url = images[i].public_url || images[i].publicUrl || '';
-    tilesHtml += '<div class="img-tile2">'
-      + '<img class="img-thumb2" src="' + url + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
-      + '<div class="img-thumb-ph" style="display:none">&#128444;</div>'
-      + '<div class="img-footer2">'
-      + '<span class="img-label2">Image ' + (i+1) + '</span>'
-      + '<a class="dl-btn2" href="' + url + '" download target="_blank">&#11015; Save</a>'
-      + '</div></div>';
+    var url = images[i].public_url || images[i].publicUrl || images[i].url || "";
+    if (!url) continue;
+    var safeUrl = jEsc(url);
+    tiles += "<div class=\"jtile\">"           + "<img class=\"jtile-img\" src=\"" + safeUrl + "\" loading=\"lazy\" onerror=\"this.style.display=&quot;none&quot;;this.nextElementSibling.style.display=&quot;flex&quot;\">"           + "<div class=\"jtile-ph\">&#128444;</div>"           + "<div class=\"jtile-foot\">"           + "<span class=\"jtile-lbl\">Image " + (i+1) + "</span>"           + "<a class=\"j-save\" href=\"" + safeUrl + "\" download=\"vinsnap_img" + (i+1) + ".jpg\" target=\"_blank\">&#11015; Save</a>"           + "</div></div>";
   }
 
-  var imgsSection = '';
+  var imgsSection = "";
   if (isDone && images.length > 0) {
-    imgsSection = '<div class="imgs-section2" id="imgs2-' + jobId + '" style="display:' + (isExp?'block':'none') + '">'
-      + '<div class="imgs-title2">&#128444; ' + images.length + ' image' + (images.length!==1?'s':'') + ' ready</div>'
-      + '<button class="dl-all-btn2" onclick="downloadAll2(\'' + jobId + '\',event)">&#11015; Download All (' + images.length + ')</button>'
-      + '<div class="imgs-grid2">' + tilesHtml + '</div>'
-      + '</div>';
+    imgsSection = "<div class=\"jimgs\" id=\"jimgs-" + jobId + "\" style=\"display:" + (isExp ? "block" : "none") + "\">"                + "<div class=\"jimgs-hdr\">"                + "<span class=\"jimgs-title\">&#128444; " + images.length + " image" + (images.length!==1?"s":"") + " ready</span>"                + "<button class=\"j-dlall\" onclick=\"jDlAll('"+jobId+"',event)\">&#11015; Download All (" + images.length + ")</button>"                + "</div>"                + "<div class=\"jgrid\">" + tiles + "</div>"                + "</div>";
   }
 
-  var expandBtn = '';
+  var footer = "";
   if (isDone && images.length > 0) {
-    expandBtn = '<button class="expand-btn2" onclick="toggleExpand2(\'' + jobId + '\')">'
-      + '<span id="eico2-' + jobId + '">' + (isExp?'&#9650;':'&#9660;') + '</span>'
-      + ' <span id="elbl2-' + jobId + '">' + (isExp ? 'Hide images' : 'View ' + images.length + ' image' + (images.length!==1?'s':'')) + '</span>'
-      + '</button>';
+    footer = "<button class=\"j-toggle\" onclick=\"jToggle('"+jobId+"')\">"           + "<span id=\"jico-"+jobId+"\">" + (isExp ? "&#9650;" : "&#9660;") + "</span>"           + "&nbsp;" + (isExp ? "Hide images" : "View " + images.length + " image" + (images.length!==1?"s":""))           + "</button>";
   } else if (isDone) {
-    expandBtn = '<span style="font-size:.78rem;color:var(--dim)">Images processing&hellip;</span>';
-  } else if (status === 'pending' || status === 'running') {
-    expandBtn = '<span style="font-size:.78rem;color:var(--dim)">Auto-refreshes every 30s</span>';
-  } else if (status === 'failed') {
-    expandBtn = '<span style="font-size:.78rem;color:var(--red)">&#10060; Failed &mdash; please resubmit</span>';
+    footer = "<span style=\"font-size:.78rem;color:var(--dim)\">Images processing&hellip;</span>";
+  } else if (isActive) {
+    footer = "<span style=\"font-size:.78rem;color:var(--dim)\">&#128337; Refreshes every 20s</span>";
+  } else if (status === "failed") {
+    footer = "<span style=\"font-size:.78rem;color:var(--red)\">&#10060; Failed &mdash; please resubmit</span>";
   }
 
-  var detailCompleted = job.completed_at
-    ? '<div class="detail-item2"><span class="detail-lbl2">Completed</span><span class="detail-val2">' + new Date(job.completed_at).toLocaleTimeString() + '</span></div>'
-    : '';
+  var completedRow = job.completed_at
+    ? "<div class=\"jditem\"><span class=\"jdlbl\">Completed</span><span class=\"jdval\">" + new Date(job.completed_at).toLocaleTimeString() + "</span></div>"
+    : "";
 
-  return '<div class="job-card2">'
-    + '<div class="job-top2">'
-    + '<div class="job-info2">'
-    + '<div class="job-name2">' + escHtml2(name) + '</div>'
-    + '<div class="job-meta2">' + (cat ? '<span>&#128230; ' + escHtml2(cat) + (subcat ? ' &rsaquo; '+escHtml2(subcat) : '') + '</span>' : '') + '<span>&#128336; '+created+'</span>' + duration + '</div>'
-    + '<div class="job-id2">' + jobId + '</div>'
-    + '</div>'
-    + '<div class="chip chip-' + status + '">'
-    + (status==='pending'||status==='running' ? '<span class="cdot"></span>' : '')
-    + statusIcons[status] + ' ' + (statusLabels[status]||status)
-    + '</div>'
-    + '</div>'
-    + '<div class="prog-track2"><div class="prog-bar2" style="width:'+progW+'%;'+progStyle+'"></div></div>'
-    + '<div class="detail-row2">'
-    + '<div class="detail-item2"><span class="detail-lbl2">Uploaded</span><span class="detail-val2">' + (job.image_count||'--') + '</span></div>'
-    + '<div class="detail-item2"><span class="detail-lbl2">Shot Types</span><span class="detail-val2">' + (job.type_count||'--') + '</span></div>'
-    + '<div class="detail-item2"><span class="detail-lbl2">Generated</span><span class="detail-val2">' + (isDone ? imgCount : '--') + '</span></div>'
-    + detailCompleted
-    + '</div>'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">' + expandBtn + '</div>'
-    + imgsSection
-    + '</div>';
+  return "<div class=\"jcard\">"       + "<div class=\"jcard-top\">"       + "<div class=\"jcard-info\">"       + "<div class=\"jcard-name\">" + jEsc(name) + "</div>"       + "<div class=\"jcard-meta\">" + (cat ? "<span>&#128230; " + jEsc(cat) + (subcat ? " &rsaquo; " + jEsc(subcat) : "") + "</span>" : "") + "<span>&#128336; " + created + "</span>" + dur + "</div>"       + "<div class=\"jcard-id\">" + jEsc(jobId) + "</div>"       + "</div>"       + "<div class=\"jchip jchip-" + status + "\">" + (isActive ? "<span class=\"jdot\"></span>" : "") + chipIco + " " + chipLbl + "</div>"       + "</div>"       + "<div class=\"jprog\"><div class=\"jprog-bar\" style=\"width:" + progW + ";" + progClr + "\"></div></div>"       + "<div class=\"jdetails\">"       + "<div class=\"jditem\"><span class=\"jdlbl\">Uploaded</span><span class=\"jdval\">" + (job.image_count || "--") + "</span></div>"       + "<div class=\"jditem\"><span class=\"jdlbl\">Shot Types</span><span class=\"jdval\">" + (job.type_count || "--") + "</span></div>"       + "<div class=\"jditem\"><span class=\"jdlbl\">Generated</span><span class=\"jdval\">" + (isDone ? imgCount : "--") + "</span></div>"       + completedRow       + "</div>"       + "<div style=\"display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px\">" + footer + "</div>"       + imgsSection       + "</div>";
 }
 
-function toggleExpand2(jobId) {
-  var el  = document.getElementById('imgs2-' + jobId);
-  var ico = document.getElementById('eico2-' + jobId);
-  var lbl = document.getElementById('elbl2-' + jobId);
+function jToggle(jobId) {
+  var el = document.getElementById("jimgs-" + jobId);
+  var ico = document.getElementById("jico-" + jobId);
   if (!el) return;
-  var open = el.style.display === 'none';
-  el.style.display = open ? 'block' : 'none';
-  _expandedJobs2[jobId] = open;
-  if (ico) ico.innerHTML = open ? '&#9650;' : '&#9660;';
+  var open = el.style.display === "none";
+  el.style.display = open ? "block" : "none";
+  _jExp[jobId] = open;
+  if (ico) ico.innerHTML = open ? "&#9650;" : "&#9660;";
 }
 
-async function downloadAll2(jobId, e) {
+function jDlAll(jobId, e) {
   if (e) e.preventDefault();
-  toast('Starting downloads...');
-  var el = document.getElementById('imgs2-' + jobId);
+  toast("Starting downloads...");
+  var el = document.getElementById("jimgs-" + jobId);
   if (!el) return;
-  var links = el.querySelectorAll('.dl-btn2');
-  for (var i = 0; i < links.length; i++) {
-    var a = document.createElement('a');
+  var links = el.querySelectorAll(".j-save");
+  var i = 0;
+  function next() {
+    if (i >= links.length) { toast(links.length + " downloads started"); return; }
+    var a = document.createElement("a");
     a.href = links[i].href;
-    a.download = 'vinsnap_' + (i+1) + '.jpg';
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    await new Promise(function(r){ setTimeout(r, 400); });
+    a.download = "vinsnap_" + (i+1) + ".jpg";
+    a.target = "_blank";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    i++; setTimeout(next, 400);
   }
-  toast(links.length + ' downloads started');
+  next();
 }
 
-function escHtml2(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function jEsc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
 </script>
@@ -380,56 +350,52 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 
 /* ── ANALYSE BUTTON ── */
 
-/* ── TABS ── */
-.tab-bar{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:0;background:#fff;position:sticky;top:60px;z-index:99;padding:0 24px}
+.tab-bar{display:flex;border-bottom:2px solid var(--border);background:#fff;position:sticky;top:60px;z-index:99;padding:0 24px}
 .tab-btn{padding:14px 20px;font-family:'Outfit',sans-serif;font-size:.88rem;font-weight:600;color:var(--dim);background:none;border:none;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:.2s;white-space:nowrap}
 .tab-btn:hover{color:var(--accent)}
 .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
 .tab-page{display:none}.tab-page.active{display:block}
-/* ── JOBS PAGE ── */
-.toolbar2{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
-.refresh-btn2{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--rx);border:1.5px solid var(--border);background:#fff;color:var(--dim2);font-family:'Outfit',sans-serif;font-size:.84rem;font-weight:600;cursor:pointer;transition:.2s}
-.refresh-btn2:hover{border-color:var(--accent);color:var(--accent)}
-.job-count2{font-size:.82rem;color:var(--dim);font-weight:500}
-.job-card2{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:20px;margin-bottom:14px;box-shadow:var(--sh);transition:.2s}
-.job-card2:hover{box-shadow:0 6px 32px rgba(99,102,241,.13)}
-.job-top2{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
-.job-info2{flex:1;min-width:0}
-.job-name2{font-size:1rem;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.job-meta2{font-size:.76rem;color:var(--dim);display:flex;gap:12px;flex-wrap:wrap;margin-top:4px}
-.job-id2{font-size:.72rem;color:var(--dim);font-family:monospace;margin-top:3px}
-.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:700;flex-shrink:0}
-.chip-pending{background:#fef3c7;color:#92400e}
-.chip-running{background:#dbeafe;color:#1e40af}
-.chip-completed{background:#d1fae5;color:#065f46}
-.chip-completed_with_errors{background:#fef3c7;color:#92400e}
-.chip-failed{background:#fee2e2;color:#991b1b}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.chip .cdot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:blink 1.4s ease infinite;flex-shrink:0}
-.prog-track2{height:5px;background:var(--card2);border-radius:3px;margin-bottom:14px;overflow:hidden}
-.prog-bar2{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s ease}
-.detail-row2{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px}
-.detail-item2{background:var(--card2);border-radius:var(--rx);padding:9px 12px}
-.detail-lbl2{font-size:.68rem;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:2px}
-.detail-val2{font-size:.84rem;font-weight:700;color:var(--text)}
-.imgs-section2{border-top:1px solid var(--border);padding-top:14px;margin-top:2px}
-.imgs-title2{font-size:.82rem;font-weight:700;color:var(--green);margin-bottom:10px}
-.imgs-grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
-.img-tile2{border:1.5px solid var(--border);border-radius:var(--rs);overflow:hidden;transition:.2s;background:var(--card2)}
-.img-tile2:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 6px 20px rgba(99,102,241,.15)}
-.img-thumb2{width:100%;aspect-ratio:1;object-fit:cover;display:block}
-.img-thumb-ph{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:2rem;background:var(--card2)}
-.img-footer2{padding:8px 10px;display:flex;align-items:center;justify-content:space-between}
-.img-label2{font-size:.72rem;font-weight:600;color:var(--dim2)}
-.dl-btn2{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Outfit',sans-serif;font-size:.72rem;font-weight:700;text-decoration:none;transition:.2s}
-.dl-btn2:hover{opacity:.85}
-.dl-all-btn2{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:var(--rx);background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Outfit',sans-serif;font-size:.84rem;font-weight:700;border:none;cursor:pointer;transition:.2s;margin-bottom:12px}
-.dl-all-btn2:hover{opacity:.9}
-.expand-btn2{background:none;border:none;color:var(--accent);font-family:'Outfit',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px}
-.expand-btn2:hover{text-decoration:underline}
-.jobs-empty2{text-align:center;padding:60px 20px;color:var(--dim)}
-@keyframes spin2{to{transform:rotate(360deg)}}
-.spinner2{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin2 .7s linear infinite;margin:0 auto 14px}
+.j-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.j-rbtn{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--rx);border:1.5px solid var(--border);background:#fff;color:var(--dim2);font-family:'Outfit',sans-serif;font-size:.84rem;font-weight:600;cursor:pointer;transition:.2s}
+.j-rbtn:hover{border-color:var(--accent);color:var(--accent)}
+.jcard{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:20px;margin-bottom:14px;box-shadow:var(--sh)}
+.jcard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.jcard-info{flex:1;min-width:0}
+.jcard-name{font-size:1rem;font-weight:700;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jcard-meta{font-size:.75rem;color:var(--dim);display:flex;gap:10px;flex-wrap:wrap}
+.jcard-id{font-size:.7rem;color:var(--dim);font-family:monospace;margin-top:3px;opacity:.7}
+.jchip{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:700;flex-shrink:0}
+.jchip-pending{background:#fef3c7;color:#92400e}
+.jchip-running{background:#dbeafe;color:#1e40af}
+.jchip-completed,.jchip-completed_with_errors{background:#d1fae5;color:#065f46}
+.jchip-failed{background:#fee2e2;color:#991b1b}
+@keyframes jblink{0%,100%{opacity:1}50%{opacity:.3}}
+.jchip .jdot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:jblink 1.4s ease infinite;flex-shrink:0}
+.jprog{height:5px;background:var(--card2);border-radius:3px;margin-bottom:12px;overflow:hidden}
+.jprog-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s ease}
+.jdetails{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px}
+.jditem{background:var(--card2);border-radius:var(--rx);padding:8px 11px}
+.jdlbl{font-size:.67rem;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:2px}
+.jdval{font-size:.83rem;font-weight:700}
+.jimgs{border-top:1px solid var(--border);padding-top:14px;margin-top:4px}
+.jimgs-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.jimgs-title{font-size:.82rem;font-weight:700;color:var(--green)}
+.j-dlall{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--rx);background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Outfit',sans-serif;font-size:.78rem;font-weight:700;border:none;cursor:pointer;transition:.2s}
+.j-dlall:hover{opacity:.85}
+.jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.jtile{border:1.5px solid var(--border);border-radius:var(--rs);overflow:hidden;transition:.2s;background:var(--card2)}
+.jtile:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 6px 20px rgba(99,102,241,.15)}
+.jtile-img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.jtile-ph{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:2rem;background:var(--card2);display:none}
+.jtile-foot{padding:7px 9px;display:flex;align-items:center;justify-content:space-between}
+.jtile-lbl{font-size:.7rem;font-weight:600;color:var(--dim2)}
+.j-save{display:inline-flex;align-items:center;gap:3px;padding:4px 9px;border-radius:5px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Outfit',sans-serif;font-size:.7rem;font-weight:700;text-decoration:none}
+.j-save:hover{opacity:.85}
+.j-toggle{background:none;border:none;color:var(--accent);font-family:'Outfit',sans-serif;font-size:.79rem;font-weight:600;cursor:pointer;padding:0;display:flex;align-items:center;gap:3px}
+.j-toggle:hover{text-decoration:underline}
+.j-empty{text-align:center;padding:60px 20px;color:var(--dim)}
+@keyframes jspin{to{transform:rotate(360deg)}}
+.j-spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:jspin .7s linear infinite;margin:0 auto 12px}
 
 </style>
 </head>
@@ -995,20 +961,17 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 <div id="page-jobs" class="tab-page">
 <div class="pg">
   <div class="ptitle" style="margin-bottom:4px">&#128203; <span style="background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">My Jobs</span></div>
-  <div class="psub">Live status and image downloads for all your batch jobs.</div>
-  <div class="toolbar2">
-    <div class="job-count2" id="jobCount2"></div>
-    <button class="refresh-btn2" onclick="loadJobs2()"><span id="refIco2">&#128260;</span> Refresh</button>
+  <div class="psub">All your batches — current and past. Downloads stay available as long as the job exists.</div>
+  <div class="j-toolbar">
+    <span id="jCount" style="font-size:.82rem;color:var(--dim);font-weight:500"></span>
+    <button class="j-rbtn" onclick="loadJobs()"><span id="jRefIco">&#128260;</span> Refresh</button>
   </div>
-  <div id="jobsLoading2" style="text-align:center;padding:60px 20px;display:none">
-    <div class="spinner2"></div>
-    <div style="color:var(--dim);font-size:.9rem">Loading jobs&hellip;</div>
-  </div>
-  <div id="jobsList2"></div>
-  <div id="jobsEmpty2" class="jobs-empty2" style="display:none">
+  <div id="jLoading" style="text-align:center;padding:60px 20px;display:none"><div class="j-spinner"></div><div style="color:var(--dim);font-size:.9rem">Loading&hellip;</div></div>
+  <div id="jList"></div>
+  <div id="jEmpty" class="j-empty" style="display:none">
     <div style="font-size:2.5rem;margin-bottom:10px">&#128444;</div>
     <div style="font-weight:700;margin-bottom:6px;color:var(--dim2)">No jobs yet</div>
-    <div style="font-size:.86rem">Submit a batch and your jobs will appear here.</div>
+    <div style="font-size:.85rem">Submit a batch and all your jobs will appear here.</div>
   </div>
 </div>
 </div>
@@ -1496,177 +1459,147 @@ function toast(msg, dur=3000) {
   clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'), dur);
 }
 
-// ══ TABS ══════════════════════════════════════════════════════════
-function switchTab(tab) {
-  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
-  document.querySelectorAll('.tab-page').forEach(function(p){p.classList.remove('active');});
-  document.getElementById('tab-'+tab).classList.add('active');
-  document.getElementById('page-'+tab).classList.add('active');
-  if (tab === 'jobs') loadJobs2();
+// ══ TABS ══════════════════════════════════════════════════════════════════
+function switchTab(t) {
+  ["batch","jobs"].forEach(function(n) {
+    document.getElementById("tab-"+n).classList.toggle("active", n===t);
+    document.getElementById("page-"+n).classList.toggle("active", n===t);
+  });
+  if (t === "jobs") loadJobs();
 }
 
-// ══ JOBS PAGE ═════════════════════════════════════════════════════
-var _jobsPollTimer2 = null;
-var _expandedJobs2  = {};
+// ══ JOBS PAGE ════════════════════════════════════════════════════════════════
+var _jPoll = null;
+var _jExp  = {};
 
-async function loadJobs2() {
+function loadJobs() {
   if (!user) {
-    document.getElementById('jobsList2').innerHTML = '<div class="jobs-empty2"><div style="font-size:2rem;margin-bottom:8px">&#128274;</div><div style="font-weight:700">Sign in to view your jobs</div></div>';
+    document.getElementById("jList").innerHTML = "<div class=\"j-empty\"><div style=\"font-size:2rem;margin-bottom:8px\">&#128274;</div><div style=\"font-weight:700\">Sign in to view your jobs</div></div>";
+    document.getElementById("jLoading").style.display = "none";
     return;
   }
-  document.getElementById('refIco2').textContent = '...';
-  document.getElementById('jobsLoading2').style.display = 'block';
-  document.getElementById('jobsList2').innerHTML = '';
-  document.getElementById('jobsEmpty2').style.display = 'none';
+  document.getElementById("jRefIco").innerHTML = "&#8987;";
+  document.getElementById("jLoading").style.display = "block";
+  document.getElementById("jList").innerHTML = "";
+  document.getElementById("jEmpty").style.display = "none";
 
-  try {
-    var resp = await fetch(
-      SB_URL + '/rest/v1/batch_jobs?email=eq.' + encodeURIComponent(user.email) + '&order=created_at.desc&limit=50',
-      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
-    );
-    var jobs = await resp.json();
-    document.getElementById('jobsLoading2').style.display = 'none';
-    document.getElementById('refIco2').textContent = '\u{1F504}';
-
+  fetch(SB_URL + "/rest/v1/batch_jobs?email=eq." + encodeURIComponent(user.email)
+        + "&order=created_at.desc&limit=100",
+    { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } })
+  .then(function(r) { return r.json(); })
+  .then(function(jobs) {
+    document.getElementById("jLoading").style.display = "none";
+    document.getElementById("jRefIco").innerHTML = "&#128260;";
     if (!Array.isArray(jobs) || jobs.length === 0) {
-      document.getElementById('jobsEmpty2').style.display = 'block';
-      document.getElementById('jobCount2').textContent = '';
+      document.getElementById("jEmpty").style.display = "block";
+      document.getElementById("jCount").textContent = "";
       return;
     }
-    document.getElementById('jobCount2').textContent = jobs.length + ' job' + (jobs.length !== 1 ? 's' : '');
-    document.getElementById('jobsList2').innerHTML = jobs.map(renderJob2).join('');
-
-    var hasActive = jobs.some(function(j){ return j.status === 'pending' || j.status === 'running'; });
-    clearInterval(_jobsPollTimer2);
-    if (hasActive) _jobsPollTimer2 = setInterval(loadJobs2, 30000);
-  } catch(e) {
-    document.getElementById('jobsLoading2').style.display = 'none';
-    document.getElementById('refIco2').textContent = '\u{1F504}';
-    document.getElementById('jobsList2').innerHTML = '<div style="color:var(--red);font-size:.84rem;padding:20px">Failed to load jobs.</div>';
-  }
+    document.getElementById("jCount").textContent = jobs.length + " job" + (jobs.length !== 1 ? "s" : "");
+    document.getElementById("jList").innerHTML = jobs.map(renderJob).join("");
+    Object.keys(_jExp).forEach(function(id) {
+      var el = document.getElementById("jimgs-"+id);
+      if (el && _jExp[id]) el.style.display = "block";
+    });
+    var hasActive = jobs.some(function(j) { return j.status === "pending" || j.status === "running"; });
+    clearInterval(_jPoll);
+    if (hasActive) _jPoll = setInterval(loadJobs, 20000);
+  })
+  .catch(function(e) {
+    document.getElementById("jLoading").style.display = "none";
+    document.getElementById("jRefIco").innerHTML = "&#128260;";
+    document.getElementById("jList").innerHTML = "<div style=\"color:var(--red);padding:20px;font-size:.84rem\">Failed to load jobs: " + e.message + "</div>";
+  });
 }
 
-function renderJob2(job) {
-  var status   = job.status || 'pending';
-  var jobId    = job.batch_job_id || job.id || '';
-  var name     = job.product_name || job.productName || 'Untitled';
-  var cat      = (job.category || '').replace(/_/g,' ');
-  var subcat   = (job.subcategory || '').replace(/_/g,' ');
+function renderJob(job) {
+  var status   = job.status || "pending";
+  var jobId    = job.batch_job_id || job.id || "";
+  var name     = job.product_name || job.productName || job.product || "Untitled";
+  var cat      = (job.category || "").replace(/_/g," ");
+  var subcat   = (job.subcategory || "").replace(/_/g," ");
   var imgCount = job.output_image_count || 0;
-  var created  = job.created_at ? new Date(job.created_at).toLocaleString() : '--';
-  var isExp    = !!_expandedJobs2[jobId];
-  var isDone   = status === 'completed' || status === 'completed_with_errors';
+  var created  = job.created_at ? new Date(job.created_at).toLocaleString() : "--";
+  var isDone   = status === "completed" || status === "completed_with_errors";
+  var isActive = status === "pending" || status === "running";
+  var isExp    = !!_jExp[jobId];
 
-  var statusLabels = {pending:'Pending',running:'Generating',completed:'Completed',completed_with_errors:'Completed',failed:'Failed'};
-  var statusIcons  = {pending:'&#9203;',running:'&#9881;&#65039;',completed:'&#9989;',completed_with_errors:'&#9888;&#65039;',failed:'&#10060;'};
-  var progW = {pending:12,running:55,completed:100,completed_with_errors:100,failed:100}[status] || 0;
-  var progStyle = status==='failed' ? 'background:#dc2626' : isDone ? 'background:#059669' : '';
+  var chipIco = {pending:"&#9203;",running:"&#9881;",completed:"&#9989;",completed_with_errors:"&#9888;",failed:"&#10060;"}[status] || "";
+  var chipLbl = {pending:"Pending",running:"Generating",completed:"Completed",completed_with_errors:"Completed",failed:"Failed"}[status] || status;
+  var progW   = {pending:10,running:55,completed:100,completed_with_errors:100,failed:100}[status] || 0;
+  var progClr = status==="failed" ? "background:#dc2626" : isDone ? "background:#059669" : "";
 
-  var duration = '';
+  var dur = "";
   if (job.created_at && job.completed_at) {
     var mins = Math.round((new Date(job.completed_at) - new Date(job.created_at)) / 60000);
-    duration = ' <span>&#9889; ' + mins + ' min</span>';
+    dur = "<span>&#9889; " + mins + "min</span>";
   }
 
   var images = [];
-  try { images = Array.isArray(job.output_images) ? job.output_images : JSON.parse(job.output_images || '[]'); } catch(e){}
+  try { images = Array.isArray(job.output_images) ? job.output_images : JSON.parse(job.output_images || "[]"); } catch(e) {}
 
-  // Build image tiles as plain string concat
-  var tilesHtml = '';
+  var tiles = "";
   for (var i = 0; i < images.length; i++) {
-    var url = images[i].public_url || images[i].publicUrl || '';
-    tilesHtml += '<div class="img-tile2">'
-      + '<img class="img-thumb2" src="' + url + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
-      + '<div class="img-thumb-ph" style="display:none">&#128444;</div>'
-      + '<div class="img-footer2">'
-      + '<span class="img-label2">Image ' + (i+1) + '</span>'
-      + '<a class="dl-btn2" href="' + url + '" download target="_blank">&#11015; Save</a>'
-      + '</div></div>';
+    var url = images[i].public_url || images[i].publicUrl || images[i].url || "";
+    if (!url) continue;
+    var safeUrl = jEsc(url);
+    tiles += "<div class=\"jtile\">"           + "<img class=\"jtile-img\" src=\"" + safeUrl + "\" loading=\"lazy\" onerror=\"this.style.display=&quot;none&quot;;this.nextElementSibling.style.display=&quot;flex&quot;\">"           + "<div class=\"jtile-ph\">&#128444;</div>"           + "<div class=\"jtile-foot\">"           + "<span class=\"jtile-lbl\">Image " + (i+1) + "</span>"           + "<a class=\"j-save\" href=\"" + safeUrl + "\" download=\"vinsnap_img" + (i+1) + ".jpg\" target=\"_blank\">&#11015; Save</a>"           + "</div></div>";
   }
 
-  var imgsSection = '';
+  var imgsSection = "";
   if (isDone && images.length > 0) {
-    imgsSection = '<div class="imgs-section2" id="imgs2-' + jobId + '" style="display:' + (isExp?'block':'none') + '">'
-      + '<div class="imgs-title2">&#128444; ' + images.length + ' image' + (images.length!==1?'s':'') + ' ready</div>'
-      + '<button class="dl-all-btn2" onclick="downloadAll2(\'' + jobId + '\',event)">&#11015; Download All (' + images.length + ')</button>'
-      + '<div class="imgs-grid2">' + tilesHtml + '</div>'
-      + '</div>';
+    imgsSection = "<div class=\"jimgs\" id=\"jimgs-" + jobId + "\" style=\"display:" + (isExp ? "block" : "none") + "\">"                + "<div class=\"jimgs-hdr\">"                + "<span class=\"jimgs-title\">&#128444; " + images.length + " image" + (images.length!==1?"s":"") + " ready</span>"                + "<button class=\"j-dlall\" onclick=\"jDlAll('"+jobId+"',event)\">&#11015; Download All (" + images.length + ")</button>"                + "</div>"                + "<div class=\"jgrid\">" + tiles + "</div>"                + "</div>";
   }
 
-  var expandBtn = '';
+  var footer = "";
   if (isDone && images.length > 0) {
-    expandBtn = '<button class="expand-btn2" onclick="toggleExpand2(\'' + jobId + '\')">'
-      + '<span id="eico2-' + jobId + '">' + (isExp?'&#9650;':'&#9660;') + '</span>'
-      + ' <span id="elbl2-' + jobId + '">' + (isExp ? 'Hide images' : 'View ' + images.length + ' image' + (images.length!==1?'s':'')) + '</span>'
-      + '</button>';
+    footer = "<button class=\"j-toggle\" onclick=\"jToggle('"+jobId+"')\">"           + "<span id=\"jico-"+jobId+"\">" + (isExp ? "&#9650;" : "&#9660;") + "</span>"           + "&nbsp;" + (isExp ? "Hide images" : "View " + images.length + " image" + (images.length!==1?"s":""))           + "</button>";
   } else if (isDone) {
-    expandBtn = '<span style="font-size:.78rem;color:var(--dim)">Images processing&hellip;</span>';
-  } else if (status === 'pending' || status === 'running') {
-    expandBtn = '<span style="font-size:.78rem;color:var(--dim)">Auto-refreshes every 30s</span>';
-  } else if (status === 'failed') {
-    expandBtn = '<span style="font-size:.78rem;color:var(--red)">&#10060; Failed &mdash; please resubmit</span>';
+    footer = "<span style=\"font-size:.78rem;color:var(--dim)\">Images processing&hellip;</span>";
+  } else if (isActive) {
+    footer = "<span style=\"font-size:.78rem;color:var(--dim)\">&#128337; Refreshes every 20s</span>";
+  } else if (status === "failed") {
+    footer = "<span style=\"font-size:.78rem;color:var(--red)\">&#10060; Failed &mdash; please resubmit</span>";
   }
 
-  var detailCompleted = job.completed_at
-    ? '<div class="detail-item2"><span class="detail-lbl2">Completed</span><span class="detail-val2">' + new Date(job.completed_at).toLocaleTimeString() + '</span></div>'
-    : '';
+  var completedRow = job.completed_at
+    ? "<div class=\"jditem\"><span class=\"jdlbl\">Completed</span><span class=\"jdval\">" + new Date(job.completed_at).toLocaleTimeString() + "</span></div>"
+    : "";
 
-  return '<div class="job-card2">'
-    + '<div class="job-top2">'
-    + '<div class="job-info2">'
-    + '<div class="job-name2">' + escHtml2(name) + '</div>'
-    + '<div class="job-meta2">' + (cat ? '<span>&#128230; ' + escHtml2(cat) + (subcat ? ' &rsaquo; '+escHtml2(subcat) : '') + '</span>' : '') + '<span>&#128336; '+created+'</span>' + duration + '</div>'
-    + '<div class="job-id2">' + jobId + '</div>'
-    + '</div>'
-    + '<div class="chip chip-' + status + '">'
-    + (status==='pending'||status==='running' ? '<span class="cdot"></span>' : '')
-    + statusIcons[status] + ' ' + (statusLabels[status]||status)
-    + '</div>'
-    + '</div>'
-    + '<div class="prog-track2"><div class="prog-bar2" style="width:'+progW+'%;'+progStyle+'"></div></div>'
-    + '<div class="detail-row2">'
-    + '<div class="detail-item2"><span class="detail-lbl2">Uploaded</span><span class="detail-val2">' + (job.image_count||'--') + '</span></div>'
-    + '<div class="detail-item2"><span class="detail-lbl2">Shot Types</span><span class="detail-val2">' + (job.type_count||'--') + '</span></div>'
-    + '<div class="detail-item2"><span class="detail-lbl2">Generated</span><span class="detail-val2">' + (isDone ? imgCount : '--') + '</span></div>'
-    + detailCompleted
-    + '</div>'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">' + expandBtn + '</div>'
-    + imgsSection
-    + '</div>';
+  return "<div class=\"jcard\">"       + "<div class=\"jcard-top\">"       + "<div class=\"jcard-info\">"       + "<div class=\"jcard-name\">" + jEsc(name) + "</div>"       + "<div class=\"jcard-meta\">" + (cat ? "<span>&#128230; " + jEsc(cat) + (subcat ? " &rsaquo; " + jEsc(subcat) : "") + "</span>" : "") + "<span>&#128336; " + created + "</span>" + dur + "</div>"       + "<div class=\"jcard-id\">" + jEsc(jobId) + "</div>"       + "</div>"       + "<div class=\"jchip jchip-" + status + "\">" + (isActive ? "<span class=\"jdot\"></span>" : "") + chipIco + " " + chipLbl + "</div>"       + "</div>"       + "<div class=\"jprog\"><div class=\"jprog-bar\" style=\"width:" + progW + ";" + progClr + "\"></div></div>"       + "<div class=\"jdetails\">"       + "<div class=\"jditem\"><span class=\"jdlbl\">Uploaded</span><span class=\"jdval\">" + (job.image_count || "--") + "</span></div>"       + "<div class=\"jditem\"><span class=\"jdlbl\">Shot Types</span><span class=\"jdval\">" + (job.type_count || "--") + "</span></div>"       + "<div class=\"jditem\"><span class=\"jdlbl\">Generated</span><span class=\"jdval\">" + (isDone ? imgCount : "--") + "</span></div>"       + completedRow       + "</div>"       + "<div style=\"display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px\">" + footer + "</div>"       + imgsSection       + "</div>";
 }
 
-function toggleExpand2(jobId) {
-  var el  = document.getElementById('imgs2-' + jobId);
-  var ico = document.getElementById('eico2-' + jobId);
-  var lbl = document.getElementById('elbl2-' + jobId);
+function jToggle(jobId) {
+  var el = document.getElementById("jimgs-" + jobId);
+  var ico = document.getElementById("jico-" + jobId);
   if (!el) return;
-  var open = el.style.display === 'none';
-  el.style.display = open ? 'block' : 'none';
-  _expandedJobs2[jobId] = open;
-  if (ico) ico.innerHTML = open ? '&#9650;' : '&#9660;';
+  var open = el.style.display === "none";
+  el.style.display = open ? "block" : "none";
+  _jExp[jobId] = open;
+  if (ico) ico.innerHTML = open ? "&#9650;" : "&#9660;";
 }
 
-async function downloadAll2(jobId, e) {
+function jDlAll(jobId, e) {
   if (e) e.preventDefault();
-  toast('Starting downloads...');
-  var el = document.getElementById('imgs2-' + jobId);
+  toast("Starting downloads...");
+  var el = document.getElementById("jimgs-" + jobId);
   if (!el) return;
-  var links = el.querySelectorAll('.dl-btn2');
-  for (var i = 0; i < links.length; i++) {
-    var a = document.createElement('a');
+  var links = el.querySelectorAll(".j-save");
+  var i = 0;
+  function next() {
+    if (i >= links.length) { toast(links.length + " downloads started"); return; }
+    var a = document.createElement("a");
     a.href = links[i].href;
-    a.download = 'vinsnap_' + (i+1) + '.jpg';
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    await new Promise(function(r){ setTimeout(r, 400); });
+    a.download = "vinsnap_" + (i+1) + ".jpg";
+    a.target = "_blank";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    i++; setTimeout(next, 400);
   }
-  toast(links.length + ' downloads started');
+  next();
 }
 
-function escHtml2(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function jEsc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
 </script>
