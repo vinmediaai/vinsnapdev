@@ -1123,7 +1123,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
         WhatsApp: +91 98415 36868
       </a>
       <a class="upgrade-em" id="modalEmailBtn" href="#" target="_blank" style="justify-content:center;padding:12px">
-        ✉️ Email: credits@vinmediaai.online
+        ✉️ Email: vinmediaai@gmail.com
       </a>
     </div>
     <div style="font-size:.75rem;color:var(--dim);text-align:center;margin-top:12px">Credits added within 15 minutes of payment confirmation.</div>
@@ -2259,7 +2259,7 @@ function _updateContactLinks(creditsNeeded) {
   const eSub   = encodeURIComponent('VinSnap Credits Request');
   const eBody  = encodeURIComponent(`Hi,\n\nI'd like to buy credits for my VinSnap account.\nEmail: ${email}\nCredits needed: ${creditsNeeded}\n\nPlease advise.\n\nThank you.`);
   const waUrl  = `https://wa.me/919841536868?text=${waMsg}`;
-  const emUrl  = `mailto:credits@vinmediaai.online?subject=${eSub}&body=${eBody}`;
+  const emUrl  = `mailto:vinmediaai@gmail.com?subject=${eSub}&body=${eBody}`;
   ['upgradeWaBtn','modalWaBtn'].forEach(id => { const el=document.getElementById(id); if(el) el.href=waUrl; });
   ['upgradeEmailBtn','modalEmailBtn'].forEach(id => { const el=document.getElementById(id); if(el) el.href=emUrl; });
 }
