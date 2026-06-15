@@ -31,6 +31,34 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .sign-in{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
 .sign-out{background:var(--card2);color:var(--dim2)}
 .ubadge{background:var(--card2);color:var(--dim2);font-size:.76rem;font-weight:600;padding:4px 10px;border-radius:20px}
+/* ── CREDIT SYSTEM ── */
+.credit-badge{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1.5px solid #6ee7b7;color:#065f46;font-size:.76rem;font-weight:700;padding:4px 10px;border-radius:20px;cursor:pointer;transition:.2s}
+.credit-badge:hover{border-color:#059669}
+.credit-badge.low{background:linear-gradient(135deg,#fef3c7,#fde68a);border-color:#fbbf24;color:#92400e}
+.credit-badge.empty{background:linear-gradient(135deg,#fee2e2,#fecaca);border-color:#f87171;color:#991b1b}
+.credit-row{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border-radius:var(--rx);padding:10px 14px;margin-bottom:10px;font-size:.83rem}
+.credit-row .cr-lbl{color:var(--dim2);font-weight:500}
+.credit-row .cr-val{font-weight:700;color:var(--green)}
+.credit-row .cr-val.warn{color:#d97706}
+.credit-row .cr-val.danger{color:var(--red)}
+.upgrade-card{background:linear-gradient(135deg,#faf5ff,#ede9fe);border:2px solid #c4b5fd;border-radius:var(--r);padding:22px;margin-top:14px}
+.upgrade-title{font-size:1rem;font-weight:800;color:#5b21b6;margin-bottom:6px}
+.upgrade-sub{font-size:.85rem;color:#6d28d9;margin-bottom:14px;line-height:1.5}
+.upgrade-btns{display:flex;gap:10px;flex-wrap:wrap}
+.upgrade-wa{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--rx);background:#25d366;color:#fff;font-family:'Outfit',sans-serif;font-size:.87rem;font-weight:700;border:none;cursor:pointer;text-decoration:none}
+.upgrade-em{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--rx);background:var(--accent);color:#fff;font-family:'Outfit',sans-serif;font-size:.87rem;font-weight:700;border:none;cursor:pointer;text-decoration:none}
+.plans-toggle{background:none;border:none;color:var(--accent);font-family:'Outfit',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;margin-top:12px;padding:0;display:block}
+.plans-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:.8rem}
+.plans-table th{padding:8px 10px;background:rgba(99,102,241,.1);color:var(--dim2);font-weight:700;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+.plans-table td{padding:9px 10px;border-bottom:1px solid rgba(196,181,253,.3);vertical-align:middle}
+.plans-table tr:last-child td{border-bottom:none}
+.plans-table tr:hover td{background:rgba(99,102,241,.04)}
+.plan-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:700}
+.plan-free{background:#e0f2fe;color:#0369a1}
+.plan-1{background:#dcfce7;color:#166534}
+.plan-2{background:#fef9c3;color:#854d0e}
+.plan-3{background:#ede9fe;color:#5b21b6}
+.plan-4{background:#fce7f3;color:#9d174d}
 
 /* page */
 .pg{max-width:860px;margin:0 auto;padding:28px 20px 80px}
@@ -184,8 +212,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .slider-sub{font-size:.85rem;color:rgba(255,255,255,.55);margin-top:8px}
 .slider-track-wrap{position:relative;overflow:hidden;border-radius:16px}
 .slider-track{display:flex;transition:transform .6s cubic-bezier(.4,0,.2,1)}
-.slider-slide{min-width:100%;aspect-ratio:1/1;max-height:460px;position:relative;overflow:hidden;border-radius:16px;background:#1a1030}
+.slider-slide{min-width:100%;height:460px;position:relative;overflow:hidden;border-radius:16px;background:#1a1030}
 .slider-slide img{width:100%;height:100%;object-fit:cover;display:block;border-radius:16px}
+@media(max-width:600px){
+  .slider-slide{height:auto;aspect-ratio:3/4;max-height:75vw}
+  .slider-slide img{object-fit:contain}
+}
 .slider-slide .slide-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:rgba(255,255,255,.25);font-size:.82rem}
 .slider-slide .slide-placeholder span{font-size:2.5rem}
 .slider-dots{display:flex;justify-content:center;gap:8px;margin-top:16px}
@@ -231,18 +263,40 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 .av-cat-note{font-size:11px;color:var(--accent2);padding:8px 20px;display:none;align-items:center;gap:6px}
 .av-cat-note.on{display:flex}
 
+/* ── UPLOAD TIPS ── */
+.upload-tips{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+@media(max-width:520px){.upload-tips{grid-template-columns:1fr}}
+.tips-col{border-radius:var(--rx);padding:12px 14px;font-size:.78rem;line-height:1.55}
+.tips-do{background:#f0fdf4;border:1px solid #bbf7d0}
+.tips-dont{background:#fff7f7;border:1px solid #fecaca}
+.tips-head{font-weight:700;font-size:.82rem;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.tips-do .tips-head{color:#166534}
+.tips-dont .tips-head{color:#991b1b}
+.tips-col ul{padding-left:16px;margin:0}
+.tips-col ul li{margin-bottom:4px;color:#374151}
+.tips-col ul li:last-child{margin-bottom:0}
+
 /* ── LOCATION GRID ── */
 .loc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 20px 16px}
-.loc-card{border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 8px;text-align:center;cursor:pointer;transition:.2s;font-size:12px}
-.loc-card:hover{border-color:var(--accent2);background:rgba(99,102,241,.04)}
-.loc-card.on{border-color:var(--accent);background:rgba(99,102,241,.08);font-weight:600}
+.loc-card{border:1.5px solid var(--border);border-radius:var(--rx);padding:10px 8px;text-align:center;cursor:pointer;transition:.2s;font-size:12px;background:#fff;color:var(--text)}
+.loc-card:hover{border-color:var(--accent);background:rgba(99,102,241,.05)}
+.loc-card.on{border-color:var(--accent);background:rgba(99,102,241,.10);font-weight:700;color:var(--accent)}
 .loc-card-ico{font-size:18px;margin-bottom:4px}
 .loc-card-name{font-size:11px;font-weight:500}
-.loc-card.recommended{border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.04)}
-.loc-card.fashion-loc{border-color:rgba(234,88,12,.35);background:rgba(234,88,12,.04)}
-.loc-card.fashion-loc:hover{border-color:rgba(234,88,12,.7);background:rgba(234,88,12,.08)}
-.loc-card.fashion-loc.on{border-color:rgb(234,88,12);background:rgba(234,88,12,.12);font-weight:600}
-.loc-card.fashion-loc .loc-card-name::after{content:' ✦';font-size:8px;color:rgb(234,88,12);vertical-align:super}
+.loc-card.recommended,.loc-card.fashion-loc{border-color:var(--border);background:#fff}
+.loc-card.recommended:hover,.loc-card.fashion-loc:hover{border-color:var(--accent);background:rgba(99,102,241,.05)}
+.loc-card.recommended.on,.loc-card.fashion-loc.on{border-color:var(--accent);background:rgba(99,102,241,.10);color:var(--accent)}
+.loc-card.fashion-loc .loc-card-name::after{content:''}
+
+/* ── SELECTION SUMMARY BAR ── */
+.sel-summary{background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1.5px solid #c4b5fd;border-radius:var(--rs);padding:14px 16px;margin-bottom:14px;display:none}
+.sel-summary.visible{display:block}
+.sel-summary-title{font-size:.72rem;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.sel-chips{display:flex;flex-wrap:wrap;gap:7px}
+.sel-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;font-size:.76rem;font-weight:600;background:#fff;border:1.5px solid #ddd6fe;color:#4c1d95}
+.sel-chip .chip-lbl{font-size:.65rem;color:#7c3aed;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:1px}
+.sel-chip.empty{background:#f3f4f6;border-color:#e5e7eb;color:#9ca3af}
+.sel-chip.empty .chip-lbl{color:#9ca3af}
 
 /* ── ANALYSE BUTTON ── */
 
@@ -300,8 +354,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 <header class="hdr">
   <a class="brand" href="index_6.html"><span>VinSnap</span></a>
   <div class="hnav">
-    <a href="index_6.html" class="back-btn">← Standard Mode</a>
     <span class="ubadge" id="ubadge">Sign in to use</span>
+    <button class="credit-badge" id="creditBadge" onclick="openUpgradeModal()" style="display:none" title="Your credits">💎 <span id="creditCount">—</span></button>
     <button class="auth-btn sign-in" id="authBtn" onclick="openModal()">Sign In</button>
   </div>
 </header>
@@ -310,6 +364,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="tab-bar">
   <button class="tab-btn active" id="tab-batch" onclick="switchTab('batch')">✨ Generate Photos</button>
   <button class="tab-btn" id="tab-jobs" onclick="switchTab('jobs')">📋 My Jobs</button>
+  <button class="tab-btn" id="tab-newjob" onclick="startNewJob()" style="display:none;margin-left:auto;color:var(--accent);border-bottom-color:transparent">＋ New Job</button>
 </div>
 <div id="page-batch" class="tab-page active">
 
@@ -325,52 +380,52 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       <div class="slider-track" id="sliderTrack">
         <!-- Slide 1 -->
         <div class="slider-slide">
-          <img src="https://storage.googleapis.com/vinsnap-batch-us/showcase/slide_01.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
+          <img src="https://storage.googleapis.com/vinsnap-batch-us/batch-inputs/showcase/slide_01.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
           <div class="slide-placeholder" style="display:none"><span>🖼️</span>Your product photo here</div>
         </div>
         <!-- Slide 2 -->
         <div class="slider-slide">
-          <img src="https://storage.googleapis.com/vinsnap-batch-us/showcase/slide_02.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
+          <img src="https://storage.googleapis.com/vinsnap-batch-us/batch-inputs/showcase/slide_02.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
           <div class="slide-placeholder" style="display:none"><span>🖼️</span>Your product photo here</div>
         </div>
         <!-- Slide 3 -->
         <div class="slider-slide">
-          <img src="https://storage.googleapis.com/vinsnap-batch-us/showcase/slide_03.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
+          <img src="https://storage.googleapis.com/vinsnap-batch-us/batch-inputs/showcase/slide_03.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
           <div class="slide-placeholder" style="display:none"><span>🖼️</span>Your product photo here</div>
         </div>
         <!-- Slide 4 -->
         <div class="slider-slide">
-          <img src="https://storage.googleapis.com/vinsnap-batch-us/showcase/slide_04.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
+          <img src="https://storage.googleapis.com/vinsnap-batch-us/batch-inputs/showcase/slide_04.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
           <div class="slide-placeholder" style="display:none"><span>🖼️</span>Your product photo here</div>
         </div>
         <!-- Slide 5 -->
         <div class="slider-slide">
-          <img src="https://storage.googleapis.com/vinsnap-batch-us/showcase/slide_05.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
+          <img src="https://storage.googleapis.com/vinsnap-batch-us/batch-inputs/showcase/slide_05.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
           <div class="slide-placeholder" style="display:none"><span>🖼️</span>Your product photo here</div>
         </div>
         <!-- Slide 6 -->
         <div class="slider-slide">
-          <img src="https://storage.googleapis.com/vinsnap-batch-us/showcase/slide_06.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
+          <img src="https://storage.googleapis.com/vinsnap-batch-us/batch-inputs/showcase/slide_06.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
           <div class="slide-placeholder" style="display:none"><span>🖼️</span>Your product photo here</div>
         </div>
         <!-- Slide 7 -->
         <div class="slider-slide">
-          <img src="https://storage.googleapis.com/vinsnap-batch-us/showcase/slide_07.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
+          <img src="https://storage.googleapis.com/vinsnap-batch-us/batch-inputs/showcase/slide_07.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
           <div class="slide-placeholder" style="display:none"><span>🖼️</span>Your product photo here</div>
         </div>
         <!-- Slide 8 -->
         <div class="slider-slide">
-          <img src="https://storage.googleapis.com/vinsnap-batch-us/showcase/slide_08.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
+          <img src="https://storage.googleapis.com/vinsnap-batch-us/batch-inputs/showcase/slide_08.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
           <div class="slide-placeholder" style="display:none"><span>🖼️</span>Your product photo here</div>
         </div>
         <!-- Slide 9 -->
         <div class="slider-slide">
-          <img src="https://storage.googleapis.com/vinsnap-batch-us/showcase/slide_09.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
+          <img src="https://storage.googleapis.com/vinsnap-batch-us/batch-inputs/showcase/slide_09.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
           <div class="slide-placeholder" style="display:none"><span>🖼️</span>Your product photo here</div>
         </div>
         <!-- Slide 10 -->
         <div class="slider-slide">
-          <img src="https://storage.googleapis.com/vinsnap-batch-us/showcase/slide_10.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
+          <img src="https://storage.googleapis.com/vinsnap-batch-us/batch-inputs/showcase/slide_10.jpg" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="AI Product Photo">
           <div class="slide-placeholder" style="display:none"><span>🖼️</span>Your product photo here</div>
         </div>
       </div>
@@ -404,6 +459,32 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       <div class="uhint">Up to 10 images · JPG PNG WebP · Max 10MB each</div>
     </div>
     <div class="tgrid" id="thumbGrid"></div>
+
+    <!-- DO / DON'T TIPS -->
+    <div class="upload-tips">
+      <div class="tips-col tips-do">
+        <div class="tips-head"><span>✅</span> Do's</div>
+        <ul>
+          <li>Use a plain, solid-color or white background for best output quality</li>
+          <li>Ensure your product is well-lit and clearly visible</li>
+          <li>Upload sharp, high-resolution images (min 800×800px)</li>
+          <li>One product per image — isolated cleanly</li>
+          <li>If uploading multiple images, make sure all match the selected category &amp; subcategory</li>
+          <li>Capture the product from multiple angles for variety</li>
+        </ul>
+      </div>
+      <div class="tips-col tips-dont">
+        <div class="tips-head"><span>❌</span> Don'ts</div>
+        <ul>
+          <li>Don't mix multiple different products in a single image</li>
+          <li>Avoid blurry or low-resolution photos</li>
+          <li>Don't use heavily patterned or busy backgrounds</li>
+          <li>Avoid extreme shadows, harsh flash glare, or overexposure</li>
+          <li>Don't upload images with watermarks or text overlays</li>
+          <li>Avoid screenshots or images with visible device frames</li>
+        </ul>
+      </div>
+    </div>
   </div>
 
   <!-- PRODUCT DETAILS -->
@@ -837,15 +918,57 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
   <!-- EMAIL -->
   <div class="card">
     <div class="ctitle">📧 Email Delivery</div>
-    <label class="lbl">Results will be sent to</label>
-    <input class="inp" id="emailDisp" type="email" readonly placeholder="Sign in to see your email">
-    <div style="font-size:.75rem;color:var(--dim);margin-top:6px">Emailed when generation completes (~30 min)</div>
+    <label class="lbl">Send results to this email</label>
+    <input class="inp" id="emailDisp" type="email" placeholder="Enter email address for delivery" oninput="checkReady()">
+    <div style="font-size:.75rem;color:var(--dim);margin-top:6px">📬 Your AI-generated photos will be emailed here when ready (~30 min). You can use a different email than your login.</div>
+  </div>
+
+  <div id="creditInfoRow" class="credit-row" style="display:none">
+    <span class="cr-lbl">💎 Credits available</span>
+    <span class="cr-val" id="creditInfoVal">—</span>
+  </div>
+  <div id="creditCostRow" class="credit-row" style="display:none;margin-top:-6px">
+    <span class="cr-lbl">This job will use</span>
+    <span id="creditCostVal" style="font-weight:700;color:var(--accent)">— credits</span>
+  </div>
+
+  <!-- SELECTION SUMMARY BAR -->
+  <div class="sel-summary" id="selSummary">
+    <div class="sel-summary-title">📋 Your Selection Summary</div>
+    <div class="sel-chips" id="selChips"></div>
   </div>
 
   <button class="sbtn" id="submitBtn" onclick="doSubmit()" disabled>
     <span id="submitLbl">✨ Generate Photos</span>
   </button>
   <div id="submitErr" style="color:var(--red);font-size:.82rem;margin-top:10px;text-align:center"></div>
+
+  <div id="upgradeCard" class="upgrade-card" style="display:none">
+    <div class="upgrade-title">💎 More Credits Needed</div>
+    <div class="upgrade-sub" id="upgradeMsg">You need more credits to generate photos.</div>
+    <div class="upgrade-btns">
+      <a class="upgrade-wa" id="upgradeWaBtn" href="#" target="_blank">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        WhatsApp
+      </a>
+      <a class="upgrade-em" id="upgradeEmailBtn" href="#" target="_blank">✉️ Email Us</a>
+      <button class="upgrade-wa" style="background:var(--accent)" onclick="openUpgradeModal()">📋 View Plans</button>
+    </div>
+    <button class="plans-toggle" id="plansToggleBtn" onclick="toggleInlinePlans()">▼ View pricing plans</button>
+    <div id="inlinePlansWrap" style="display:none">
+      <table class="plans-table">
+        <thead><tr><th>Plan</th><th>Credits</th><th>Price</th><th>Rate</th><th>Validity</th></tr></thead>
+        <tbody>
+          <tr><td><span class="plan-badge plan-free">Free</span></td><td>20</td><td>₹0</td><td>—</td><td>Lifetime</td></tr>
+          <tr><td><span class="plan-badge plan-1">Plan 1</span></td><td>30</td><td>₹240</td><td>₹8/image</td><td>30 days</td></tr>
+          <tr><td><span class="plan-badge plan-2">Plan 2</span></td><td>60</td><td>₹480</td><td>₹8/image</td><td>60 days</td></tr>
+          <tr><td><span class="plan-badge plan-3">Plan 3</span></td><td>120</td><td>₹840</td><td>₹7/image</td><td>Never expires ✦</td></tr>
+          <tr><td><span class="plan-badge plan-4">Plan 4</span></td><td>250</td><td>₹1,500</td><td>₹6/image</td><td>Never expires ✦</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:.72rem;color:var(--dim);margin-top:6px">✦ Plans 3 & 4 never expire. 1 credit = 1 generated image.</div>
+    </div>
+  </div>
 </main>
 
 <!-- SUCCESS + STATUS TRACKER -->
@@ -892,6 +1015,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       <div class="detail-item"><span class="detail-lbl">Images</span><span class="detail-val" id="dImages">—</span></div>
       <div class="detail-item"><span class="detail-lbl">Types</span><span class="detail-val" id="dTypes">—</span></div>
       <div class="detail-item"><span class="detail-lbl">Submitted</span><span class="detail-val" id="dCreated">—</span></div>
+      <div class="detail-item" style="grid-column:1/-1"><span class="detail-lbl">📧 Delivery Email</span><span class="detail-val" id="dEmail" style="color:var(--accent);font-size:.82rem">—</span></div>
     </div>
 
     <!-- Done: image links -->
@@ -915,8 +1039,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       <button class="newbtn" onclick="pollStatus()" id="refreshBtn" style="margin:0;padding:8px 18px;font-size:.82rem">
         🔄 Refresh Now
       </button>
-      <button class="newbtn" onclick="resetAll()" style="margin:0;padding:8px 18px;font-size:.82rem;border-color:var(--dim);color:var(--dim)">
-        + New Job
+      <button class="newbtn" onclick="startNewJob()" style="margin:0;padding:8px 18px;font-size:.82rem;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:var(--accent)">
+        ＋ Start New Job
       </button>
     </div>
   </div>
@@ -970,6 +1094,42 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 
 <div class="toast-el" id="toastEl"></div>
 
+<!-- UPGRADE / PLANS MODAL -->
+<div class="moverlay" id="upgradeModal">
+  <div class="mcrd" style="max-width:520px;max-height:90vh;overflow-y:auto">
+    <button class="mxbtn" onclick="closeUpgradeModal()">✕</button>
+    <div class="mtitle">💎 Buy More Credits</div>
+    <div style="font-size:.84rem;color:var(--dim2);line-height:1.6;margin-bottom:16px">
+      1 credit = 1 generated image. Contact us on WhatsApp or email — we'll top up within minutes.
+    </div>
+    <div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1.5px solid #6ee7b7;border-radius:var(--rx);padding:11px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <span style="font-size:.85rem;font-weight:600;color:#065f46">Your current balance</span>
+      <span style="font-size:1.1rem;font-weight:800;color:#059669" id="modalCreditCount">— credits</span>
+    </div>
+    <table class="plans-table">
+      <thead><tr><th>Plan</th><th>Credits</th><th>Price</th><th>Rate</th><th>Validity</th></tr></thead>
+      <tbody>
+        <tr><td><span class="plan-badge plan-free">Free</span></td><td>20</td><td>₹0</td><td>—</td><td>Lifetime</td></tr>
+        <tr><td><span class="plan-badge plan-1">Plan 1</span></td><td>30</td><td><strong>₹240</strong></td><td>₹8/image</td><td>30 days</td></tr>
+        <tr><td><span class="plan-badge plan-2">Plan 2</span></td><td>60</td><td><strong>₹480</strong></td><td>₹8/image</td><td>60 days</td></tr>
+        <tr><td><span class="plan-badge plan-3">Plan 3 ✦</span></td><td>120</td><td><strong>₹840</strong></td><td>₹7/image</td><td>Never expires</td></tr>
+        <tr><td><span class="plan-badge plan-4">Plan 4 ✦</span></td><td>250</td><td><strong>₹1,500</strong></td><td>₹6/image</td><td>Never expires</td></tr>
+      </tbody>
+    </table>
+    <div style="font-size:.72rem;color:var(--dim);margin-top:6px;margin-bottom:18px">✦ Plans 3 & 4 never expire — best value for regular sellers.</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <a class="upgrade-wa" id="modalWaBtn" href="#" target="_blank" style="justify-content:center;padding:12px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        WhatsApp: +91 98415 36868
+      </a>
+      <a class="upgrade-em" id="modalEmailBtn" href="#" target="_blank" style="justify-content:center;padding:12px">
+        ✉️ Email: credits@vinmediaai.online
+      </a>
+    </div>
+    <div style="font-size:.75rem;color:var(--dim);text-align:center;margin-top:12px">Credits added within 15 minutes of payment confirmation.</div>
+  </div>
+</div>
+
 <script>
 // ══ CONFIG ═══════════════════════════════════════════════════════════
 const SB_URL     = 'https://rqzflfyqazklfnfxefct.supabase.co';
@@ -985,28 +1145,308 @@ let user           = null;
 let uploads        = [];
 let avatarId       = 'dynamic';
 let avatarCountry  = 'india';
-let locationVariant = '';   // the UI label string, e.g. "indoor home hall"
+let locationVariant = '';
 let genMode        = 'dynamic';
+let _userCredits   = null; // { credits_remaining, credits_reserved, plan_name, expires_at }
 
 // ══ SUBCATEGORY MAP ══════════════════════════════════════════════════
-const SUBCATS = {
-  womens_fashion:['womens_ethnic_saree','womens_ethnic_lehenga','womens_ethnic_kurti','womens_western_dress','womens_western_top','womens_western_jeans','womens_western_co-ord'],
-  mens_fashion:  ['mens_formal_shirt','mens_casual_shirt','mens_tshirt','mens_trousers','mens_jeans','mens_kurta','mens_suit'],
-  kids_fashion:  ['kids_top','kids_dress','kids_tshirt','kids_ethnic','kids_winter'],
-  footwear:      ['footwear_sneakers','footwear_sandals','footwear_heels','footwear_flats','footwear_boots','footwear_ethnic'],
-  jewellery:     ['jewellery_necklace','jewellery_earring','jewellery_ring','jewellery_bangle','jewellery_bracelet','jewellery_set','jewellery_mens_chain','jewellery_anklet','jewellery_maang_tikka'],
-  accessories:   ['acc_handbag','acc_sling_bag','acc_backpack','acc_wallet','acc_belt','acc_watch','acc_smartwatch','acc_sunglasses','acc_scarf'],
-  home_kitchen:  ['home_cookware','home_bakeware','home_storage','home_dinnerware','home_glassware','home_appliance'],
-  home_decor:    ['home_bedsheet','home_cushion','home_curtain','home_comforter','home_carpet','home_wall_art','home_candle','home_led_lights'],
-  beauty:        ['beauty_skincare','beauty_haircare','beauty_makeup','beauty_perfume','skincare_baby'],
-  electronics:   ['electronics_earbuds','electronics_watch','electronics_smartwatch','electronics_phone','electronics_tablet','electronics_laptop','electronics_camera'],
-  health:        ['health_fitness','health_massager','health_monitor','health_supplement','health_personal_care'],
-  toys:          ['toys_soft','toys_building','toys_action','rideon','toys_educational'],
-  stationery:    ['stationery_pen','stationery_notebook','stationery_art','stationery_school'],
-  other:         []
+const SHOT_LABELS = {
+  hero:       'Hero',
+  lifestyle1: 'Lifestyle 1',
+  lifestyle2: 'Lifestyle 2',
+  lifestyle3: 'Lifestyle 3',
 };
 
-// ══ AUTH ═════════════════════════════════════════════════════════════
+const SUBCATS = {
+  womens_fashion:[
+    'womens_saree','womens_kurti','womens_kurta_set','womens_suit_dress_material',
+    'womens_lehenga','womens_blouse_dupatta','womens_abaya','womens_petticoat',
+    'womens_top_tunic','womens_dress_gown','womens_coord_set',
+    'womens_jeans_leggings','womens_activewear','womens_maternity',
+    'womens_swimwear','womens_innerwear','womens_sleepwear'
+  ],
+  mens_fashion:[
+    'mens_tshirt','mens_casual_shirt','mens_jeans_chinos',
+    'mens_track_pants','mens_sweatshirt_hoodie','mens_jacket_coat',
+    'mens_rainwear','mens_formal_shirt','mens_formal_trousers',
+    'mens_suit_blazer','mens_kurta','mens_kurta_set',
+    'mens_sherwani','mens_dhoti_mundu','mens_activewear',
+    'mens_swimwear','mens_nightwear','mens_innerwear','mens_socks'
+  ],
+  kids_fashion:[
+    'kids_infant_newborn','kids_baby_rompers',
+    'kids_boys_set','kids_girls_set','kids_ethnic',
+    'kids_school_uniform','kids_activewear','kids_winter',
+    'kids_combo_set','kids_swimwear'
+  ],
+  footwear:[
+    'footwear_womens_heels','footwear_womens_flats',
+    'footwear_womens_ethnic','footwear_mens_casual',
+    'footwear_mens_formal','footwear_mens_sports',
+    'footwear_mens_ethnic','footwear_sneakers',
+    'footwear_boots','footwear_flipflops',
+    'footwear_kids','footwear_sports_running',
+    'footwear_orthopaedic','footwear_rain_boots','footwear_school_shoes'
+  ],
+  jewellery:[
+    'jewellery_necklace','jewellery_earring',
+    'jewellery_set','jewellery_bangle','jewellery_bracelet',
+    'jewellery_anklet','jewellery_ring','jewellery_pendant',
+    'jewellery_maang_tikka','jewellery_nose_pin','jewellery_toe_ring',
+    'jewellery_brooch','jewellery_mens_chain'
+  ],
+  accessories:[
+    'acc_handbag','acc_sling_bag','acc_backpack',
+    'acc_tote_bag','acc_luggage','acc_watch',
+    'acc_smartwatch','acc_sunglasses','acc_hair_accessories',
+    'acc_caps_hats','acc_scarf'
+  ],
+  home_kitchen:[
+    'home_cookware','home_bakeware','home_storage',
+    'home_dinnerware','home_glassware','home_appliance'
+  ],
+  home_decor:[
+    'home_bedsheet','home_cushion','home_curtain','home_comforter',
+    'home_carpet','home_wall_art','home_candle','home_led_lights'
+  ],
+  beauty:[
+    'beauty_moisturizer','beauty_face_wash','beauty_sunscreen',
+    'beauty_eye_cream','beauty_lip_care','beauty_body_lotion',
+    'beauty_baby_skincare','beauty_mens_skincare',
+    'beauty_haircare','beauty_makeup','beauty_nail_care',
+    'beauty_perfume','beauty_grooming_tools','beauty_beard_care'
+  ],
+  electronics:[
+    'electronics_earbuds','electronics_speaker',
+    'electronics_phone_case','electronics_charger',
+    'electronics_power_bank','electronics_cable',
+    'electronics_popsocket','electronics_watch',
+    'electronics_smartwatch','electronics_laptop_accessories',
+    'electronics_keyboard_mouse','electronics_camera_accessories',
+    'electronics_smart_home','electronics_gaming','electronics_router'
+  ],
+  health:[
+    'health_yoga_fitness','health_gym_equipment',
+    'health_supplement','health_monitor','health_glucometer',
+    'health_massager','health_personal_care',
+    'health_first_aid','health_baby_care'
+  ],
+  toys:[
+    'toys_outdoor_sports','toys_educational','toys_electric_rc',
+    'toys_indoor_pretend','toys_soft','toys_board_games',
+    'toys_building','toys_action','toys_art_craft','toys_puzzles'
+  ],
+  stationery:[
+    'stationery_school_bag','stationery_notebook','stationery_pen',
+    'stationery_art','stationery_lunch_box','stationery_water_bottle',
+    'stationery_desk_organiser','stationery_calculator','stationery_planner'
+  ],
+  other:[]
+};
+
+// ══ SUBCATEGORY LABEL OVERRIDES ══════════════════════════════════════
+// Keys that auto-titlecase badly get a clean display label here
+const SUBCAT_LABELS = {
+  'jewellery_ring_womens':  "💍 Ring (Women's)",
+  'jewellery_ring_mens':    "💍 Ring (Men's)",
+  'jewellery_mens_chain':   "⛓ Chain (Men's)",
+  'jewellery_maang_tikka':  "🌺 Maang Tikka",
+  'kids_baby_rompers':      "👶 Baby Rompers",
+  'kids_infant':            "👶 Infant Wear",
+  'acc_handbag':            "👜 Handbag",
+  'acc_sling_bag':          "🎒 Sling Bag",
+  'acc_backpack':           "🎒 Backpack",
+  'acc_wallet':             "👛 Wallet (Men's)",
+  'acc_belt':               "🪢 Belt (Men's)",
+  'acc_watch':              "⌚ Watch",
+  'acc_smartwatch':         "⌚ Smartwatch",
+  'acc_sunglasses':         "🕶 Sunglasses",
+  'acc_scarf':              "🧣 Scarf",
+  'home_cookware':          "🍳 Cookware",
+  'home_bakeware':          "🥧 Bakeware",
+  'home_storage':           "📦 Storage",
+  'home_dinnerware':        "🍽 Dinnerware",
+  'home_glassware':         "🥛 Glassware",
+  'home_appliance':         "🔌 Appliance",
+  'home_bedsheet':          "🛏 Bedsheet",
+  'home_cushion':           "🛋 Cushion",
+  'home_curtain':           "🪟 Curtain",
+  'home_comforter':         "🛌 Comforter",
+  'home_carpet':            "🪃 Carpet / Rug",
+  'home_wall_art':          "🖼 Wall Art",
+  'home_candle':            "🕯 Candle",
+  'home_led_lights':        "💡 LED Lights",
+  'beauty_skincare':        "✨ Skincare",
+  'beauty_haircare':        "💆 Haircare",
+  'beauty_makeup':          "💄 Makeup",
+  'beauty_perfume':         "🌸 Perfume",
+  'skincare_baby':          "👶 Baby Skincare",
+  'health_fitness':         "🏋 Fitness Equipment",
+  'health_massager':        "💆 Massager",
+  'health_monitor':         "📊 Health Monitor",
+  'health_supplement':      "💊 Supplement",
+  'health_personal_care':   "🪥 Personal Care",
+  'electronics_earbuds':    "🎧 Earbuds",
+  'electronics_watch':      "⌚ Smart Watch",
+  'electronics_smartwatch': "⌚ Smartwatch",
+  'electronics_phone':      "📱 Phone Case / Cover",
+  'electronics_tablet':     "📱 Tablet",
+  'electronics_laptop':     "💻 Laptop / Sleeve",
+  'electronics_camera':     "📷 Camera",
+  'toys_soft':              "🧸 Soft Toy",
+  'toys_building':          "🧱 Building Blocks",
+  'toys_action':            "🤖 Action Figure",
+  'toys_educational':       "📚 Educational Toy",
+  'rideon':                 "🚗 Ride-On Car",
+  'toys_baby':              "🍼 Baby Toy",
+  'stationery_pen':         "✒ Pen",
+  'stationery_notebook':    "📓 Notebook",
+  'stationery_art':         "🎨 Art & Craft",
+  'stationery_school':      "🎒 School Bag",
+  'womens_ethnic_saree':    "🥻 Saree",
+  'womens_ethnic_lehenga':  "👗 Lehenga",
+  'womens_ethnic_kurti':    "👘 Kurti",
+  'womens_western_co-ord':  "👗 Co-ord Set",
+  'kids_baby_rompers':      "👶 Baby Rompers",
+  'footwear_heels':         "👠 Heels",
+  'footwear_flats':         "🥿 Flats",
+  'footwear_sandals':       "👡 Sandals",
+  'footwear_sneakers':      "👟 Sneakers",
+  'footwear_boots':         "🥾 Boots",
+  'footwear_ethnic':        "👡 Ethnic Footwear",
+  'footwear_kids':          "👟 Kids Footwear",
+
+  // ── WOMENS FASHION ──
+  'womens_saree':               "🥻 Saree",
+  'womens_kurti':               "👘 Kurti",
+  'womens_kurta_set':           "👘 Kurta Set",
+  'womens_suit_dress_material': "👗 Suit & Dress Material",
+  'womens_lehenga':             "👗 Lehenga & Choli",
+  'womens_blouse_dupatta':      "👗 Blouse & Dupatta",
+  'womens_abaya':               "🧕 Abaya & Ethnic Jacket",
+  'womens_petticoat':           "👗 Petticoat & Ethnic Bottom",
+  'womens_top_tunic':           "👚 Top, Tunic & T-Shirt",
+  'womens_dress_gown':          "👗 Dress & Gown",
+  'womens_coord_set':           "👗 Co-ord Set",
+  'womens_jeans_leggings':      "👖 Jeans, Leggings & Palazzo",
+  'womens_activewear':          "🏃 Activewear & Yoga Wear",
+  'womens_maternity':           "🤰 Maternity Wear",
+  'womens_swimwear':            "👙 Swimwear",
+  'womens_innerwear':           "🩱 Bras & Innerwear",
+  'womens_sleepwear':           "😴 Night Suits & Sleepwear",
+
+  // ── MENS FASHION ──
+  'mens_tshirt':                "👕 T-Shirt",
+  'mens_casual_shirt':          "👔 Casual Shirt",
+  'mens_jeans_chinos':          "👖 Jeans & Chinos",
+  'mens_track_pants':           "🩳 Track Pants & Joggers",
+  'mens_sweatshirt_hoodie':     "🧥 Sweatshirt & Hoodie",
+  'mens_jacket_coat':           "🧥 Jacket & Coat",
+  'mens_rainwear':              "🌧 Rainwear",
+  'mens_formal_shirt':          "👔 Formal Shirt",
+  'mens_formal_trousers':       "👔 Formal Trousers",
+  'mens_suit_blazer':           "🤵 Suit & Blazer",
+  'mens_kurta':                 "🧥 Kurta",
+  'mens_kurta_set':             "🧥 Kurta Set",
+  'mens_sherwani':              "🤵 Sherwani",
+  'mens_dhoti_mundu':           "🧣 Dhoti & Mundu",
+  'mens_activewear':            "🏋 Activewear & Gym Wear",
+  'mens_swimwear':              "🩱 Swimwear",
+  'mens_nightwear':             "😴 Nightwear & Lounge Wear",
+  'mens_innerwear':             "🩲 Innerwear & Vests",
+  'mens_socks':                 "🧦 Socks",
+
+  // ── KIDS FASHION ──
+  'kids_infant_newborn':        "👶 Infant & Newborn (0–12m)",
+  'kids_baby_rompers':          "👶 Baby Dresses & Rompers",
+  'kids_boys_set':              "👦 Boys' Clothing Sets",
+  'kids_girls_set':             "👧 Girls' Clothing Sets",
+  'kids_ethnic':                "🎎 Kids' Ethnic Wear",
+  'kids_school_uniform':        "🏫 School Uniform",
+  'kids_activewear':            "🏃 Kids' Activewear",
+  'kids_winter':                "🧥 Winter Wear & Jackets",
+  'kids_combo_set':             "🎁 Combo Set",
+  'kids_swimwear':              "🩱 Kids' Swimwear",
+
+  // ── FOOTWEAR ──
+  'footwear_womens_heels':      "👠 Women's Heels & Wedges",
+  'footwear_womens_flats':      "🥿 Women's Flats & Sandals",
+  'footwear_womens_ethnic':     "👡 Women's Ethnic Footwear",
+  'footwear_mens_casual':       "👞 Men's Casual Shoes",
+  'footwear_mens_formal':       "👞 Men's Formal Shoes",
+  'footwear_mens_sports':       "👟 Men's Sports Shoes",
+  'footwear_mens_ethnic':       "🥿 Men's Ethnic Footwear",
+  'footwear_sneakers':          "👟 Sneakers",
+  'footwear_boots':             "🥾 Boots & Ankle Boots",
+  'footwear_flipflops':         "🩴 Flip-Flops & Slippers",
+  'footwear_sports_running':    "👟 Sports & Running Shoes",
+  'footwear_orthopaedic':       "👞 Orthopaedic & Comfort",
+  'footwear_rain_boots':        "🥾 Rain Boots",
+  'footwear_school_shoes':      "👟 School Shoes",
+
+  // ── JEWELLERY ──
+  'jewellery_ring':             "💍 Ring",
+  'jewellery_pendant':          "📿 Pendant",
+  'jewellery_nose_pin':         "💎 Nose Pin",
+  'jewellery_toe_ring':         "💍 Toe Ring",
+  'jewellery_brooch':           "📌 Brooch & Pin",
+
+  // ── ACCESSORIES ──
+  'acc_tote_bag':               "🛍 Tote Bag",
+  'acc_luggage':                "🧳 Luggage & Trolley Bag",
+  'acc_hair_accessories':       "💇 Hair Accessories",
+  'acc_caps_hats':              "🧢 Caps & Hats",
+
+  // ── BEAUTY ──
+  'beauty_moisturizer':         "🧴 Moisturizer & Serum",
+  'beauty_face_wash':           "🧼 Face Wash & Mask",
+  'beauty_sunscreen':           "☀️ Sunscreen",
+  'beauty_eye_cream':           "👁 Eye Cream",
+  'beauty_lip_care':            "💋 Lip Balm & Lip Care",
+  'beauty_body_lotion':         "🧴 Body Lotion & Body Wash",
+  'beauty_baby_skincare':       "👶 Baby Skincare",
+  'beauty_mens_skincare':       "🧖 Men's Skincare",
+  'beauty_nail_care':           "💅 Nail Care",
+  'beauty_grooming_tools':      "✂️ Grooming Tools & Trimmer",
+  'beauty_beard_care':          "🧔 Beard Care",
+
+  // ── ELECTRONICS ──
+  'electronics_speaker':            "🔊 Bluetooth Speaker",
+  'electronics_phone_case':         "📱 Phone Case & Cover",
+  'electronics_charger':            "🔌 Charger & Adapter",
+  'electronics_power_bank':         "🔋 Power Bank",
+  'electronics_cable':              "🔌 USB Cable",
+  'electronics_popsocket':          "📱 Pop Socket & Stand",
+  'electronics_laptop_accessories': "💻 Laptop & Tablet Accessories",
+  'electronics_keyboard_mouse':     "⌨️ Keyboard & Mouse",
+  'electronics_camera_accessories': "📷 Camera Accessories",
+  'electronics_smart_home':         "🏠 Smart Home Device",
+  'electronics_gaming':             "🎮 Gaming Accessories",
+  'electronics_router':             "📡 Router & Networking",
+
+  // ── HEALTH ──
+  'health_yoga_fitness':        "🧘 Yoga & Fitness Equipment",
+  'health_gym_equipment':       "🏋 Gym Equipment & Weights",
+  'health_glucometer':          "🩸 Glucometer",
+  'health_first_aid':           "🩹 First Aid",
+  'health_baby_care':           "👶 Baby Health & Care",
+
+  // ── TOYS ──
+  'toys_outdoor_sports':        "⚽ Outdoor & Sports Toys",
+  'toys_electric_rc':           "🚗 Electric & RC Toys",
+  'toys_indoor_pretend':        "🎭 Indoor & Pretend Play",
+  'toys_board_games':           "🎲 Board Games & Card Games",
+  'toys_art_craft':             "🎨 Art & Craft Kits",
+  'toys_puzzles':               "🧩 Puzzles",
+
+  // ── STATIONERY ──
+  'stationery_school_bag':      "🎒 School Bag & Backpack",
+  'stationery_lunch_box':       "🍱 Lunch Box",
+  'stationery_water_bottle':    "🍶 Water Bottle",
+  'stationery_desk_organiser':  "🗂 Desk Organiser",
+  'stationery_calculator':      "🔢 Calculator",
+  'stationery_planner':         "📅 Planner",
+};
 sb.auth.onAuthStateChange((_e, session) => {
   user = session?.user || null;
   const btn = document.getElementById('authBtn');
@@ -1015,9 +1455,9 @@ sb.auth.onAuthStateChange((_e, session) => {
   if (user) {
     btn.textContent = 'Sign Out'; btn.onclick = doSignOut; btn.className = 'auth-btn sign-out';
     badge.textContent = user.email.split('@')[0];
-    emailDisp.value = user.email;
+    if (!emailDisp.value.trim()) emailDisp.value = user.email;
     closeModal();
-    // ── Restore active job tracking if the user had one running ──
+    loadCredits(user.email);
     const saved = localStorage.getItem('vs_active_job');
     if (saved) {
       try {
@@ -1031,7 +1471,13 @@ sb.auth.onAuthStateChange((_e, session) => {
     btn.textContent = 'Sign In'; btn.onclick = openModal; btn.className = 'auth-btn sign-in';
     badge.textContent = 'Sign in to use';
     emailDisp.value = '';
+    _userCredits = null;
+    document.getElementById('creditBadge').style.display = 'none';
+    document.getElementById('creditInfoRow').style.display = 'none';
+    document.getElementById('creditCostRow').style.display = 'none';
+    document.getElementById('upgradeCard').style.display = 'none';
     clearInterval(_pollTimer);
+    document.getElementById('tab-newjob').style.display = 'none';
   }
   checkReady();
 });
@@ -1056,7 +1502,7 @@ function onCatChange() {
   (SUBCATS[cat]||[]).forEach(s => {
     const o = document.createElement('option');
     o.value = s;
-    o.textContent = s.replace(/_/g,' ').replace(/\w/g, c=>c.toUpperCase());
+    o.textContent = SUBCAT_LABELS[s] || s.replace(/_/g,' ').replace(/\w/g, c=>c.toUpperCase());
     sub.appendChild(o);
   });
   checkReady();
@@ -1148,6 +1594,7 @@ function setMode(m) {
   document.getElementById('modeCus').classList.toggle('on', m==='custom');
   document.getElementById('customPanel').style.display = m==='custom' ? 'block' : 'none';
   if (m==='dynamic') { avatarId='dynamic'; avatarCountry='india'; locationVariant=''; }
+  updateSummaryBar();
 }
 
 // ══ AVATAR FUNCTIONS (minimal — only what's needed) ══════════════════
@@ -1171,6 +1618,7 @@ function selectAvatar(el) {
   }
   el.classList.add('on');
   avatarId = el.dataset.avatar;
+  updateSummaryBar();
 }
 
 // ══ LOCATION FUNCTION ════════════════════════════════════════════════
@@ -1178,16 +1626,96 @@ function selectLoc(el) {
   document.querySelectorAll('.loc-card').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
   locationVariant = el.dataset.loc;
+  updateSummaryBar();
 }
 
 // ══ SUBMIT ═══════════════════════════════════════════════════════════
 function checkReady() {
+  const deliveryEmail = (document.getElementById('emailDisp').value || '').trim();
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(deliveryEmail);
+  const creditsNeeded = uploads.length * getTypes().length;
+
+  // Update credit cost display
+  const costRow = document.getElementById('creditCostRow');
+  const costVal = document.getElementById('creditCostVal');
+  if (user && creditsNeeded > 0) {
+    costRow.style.display = 'flex';
+    const rem = _userCredits ? _userCredits.credits_remaining : 0;
+    costVal.textContent = creditsNeeded + ' credit' + (creditsNeeded !== 1 ? 's' : '');
+    costVal.style.color = rem >= creditsNeeded ? 'var(--accent)' : 'var(--red)';
+  } else {
+    costRow.style.display = 'none';
+  }
+
+  const hasCredits = !user || !_userCredits || _userCredits.credits_remaining >= creditsNeeded;
   const ok = user &&
     uploads.length > 0 &&
     document.getElementById('catSel').value &&
     getTypes().length > 0 &&
-    document.getElementById('productName').value.trim();
+    document.getElementById('productName').value.trim() &&
+    emailValid &&
+    hasCredits;
   document.getElementById('submitBtn').disabled = !ok;
+  updateSummaryBar();
+
+  // Show/hide upgrade card
+  const upgradeCard = document.getElementById('upgradeCard');
+  if (user && _userCredits && creditsNeeded > 0 && _userCredits.credits_remaining < creditsNeeded) {
+    upgradeCard.style.display = 'block';
+    const rem = _userCredits.credits_remaining;
+    document.getElementById('upgradeMsg').textContent =
+      `You need ${creditsNeeded} credits but only have ${rem} remaining. Purchase more credits to continue.`;
+    _updateContactLinks(creditsNeeded);
+  } else if (user && _userCredits) {
+    upgradeCard.style.display = 'none';
+  }
+}
+
+// ══ SELECTION SUMMARY BAR ════════════════════════════════════════════
+function updateSummaryBar() {
+  const bar = document.getElementById('selSummary');
+  const chips = document.getElementById('selChips');
+  if (!bar || !chips) return;
+
+  const productName = (document.getElementById('productName').value || '').trim();
+  const catEl = document.getElementById('catSel');
+  const subEl = document.getElementById('subSel');
+  const catText = catEl.options[catEl.selectedIndex]?.text || '';
+  const subText = subEl.options[subEl.selectedIndex]?.text || '';
+  const imgCount = (typeof uploads !== 'undefined') ? uploads.length : 0;
+  const mode = (typeof genMode !== 'undefined') ? genMode : 'dynamic';
+
+  // Get avatar display name
+  let avatarName = '—';
+  if (typeof avatarId !== 'undefined' && avatarId) {
+    if (avatarId === 'dynamic') {
+      avatarName = '🤖 Dynamic AI';
+    } else {
+      const avEl = document.querySelector(`.av-card.on, .av-dyn-card.on`);
+      avatarName = avEl ? (avEl.querySelector('.av-name')?.textContent || avatarId) : avatarId;
+    }
+  }
+
+  // Get location display name
+  let locName = '—';
+  const locEl = document.querySelector('.loc-card.on');
+  if (locEl) locName = locEl.querySelector('.loc-card-name')?.textContent || locEl.dataset.loc || '—';
+
+  const chip = (label, value, hasValue) =>
+    `<span class="sel-chip${hasValue ? '' : ' empty'}"><span class="chip-lbl">${label}</span>${value}</span>`;
+
+  chips.innerHTML =
+    chip('📸 Images', imgCount > 0 ? imgCount + (imgCount===1?' image':' images') : 'None', imgCount > 0) +
+    chip('🏷️ Product', productName || 'Not set', !!productName) +
+    chip('📂 Category', catText && catEl.value ? catText.replace(/^[^\w]*/, '') : 'Not selected', !!catEl.value) +
+    (subEl.value ? chip('📌 Subcategory', subText.replace(/^[^\w]*/, ''), true) : '') +
+    chip('⚡ Mode', mode === 'custom' ? '🎨 Custom' : '🤖 Dynamic', true) +
+    (mode === 'custom' ? chip('🧑 Avatar', avatarName, avatarName !== '—') : '') +
+    (mode === 'custom' ? chip('📍 Location', locName !== '—' ? locName : 'Not selected', locName !== '—') : '');
+
+  // Show bar only when there's something meaningful
+  const hasAny = imgCount > 0 || productName || catEl.value;
+  bar.classList.toggle('visible', hasAny);
 }
 
 async function doSubmit() {
@@ -1196,11 +1724,13 @@ async function doSubmit() {
   const cat   = document.getElementById('catSel').value;
   const sub   = document.getElementById('subSel').value;
   const types = getTypes();
+  const deliveryEmail = (document.getElementById('emailDisp').value || '').trim();
   document.getElementById('submitErr').textContent = '';
   if (!uploads.length) { showErr('Please upload at least one image.'); return; }
   if (!cat)            { showErr('Please select a category.'); return; }
   if (!types.length)   { showErr('Please select at least one image type.'); return; }
   if (!name)           { showErr('Please enter a product name.'); return; }
+  if (!deliveryEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(deliveryEmail)) { showErr('Please enter a valid delivery email address.'); return; }
   if (genMode==='custom' && !locationVariant) { showErr('Please select a location in Custom mode.'); return; }
 
   const btn = document.getElementById('submitBtn');
@@ -1208,36 +1738,55 @@ async function doSubmit() {
 
   const config = {
     productName: name, category: cat, subcategory: sub,
-    email: user.email, mode: genMode,
+    email: user.email, deliveryEmail: deliveryEmail, mode: genMode,
     avatarId:        genMode==='custom' ? avatarId        : 'dynamic',
     avatarCountry:   genMode==='custom' ? avatarCountry   : 'india',
     locationVariant: genMode==='custom' ? 'dynamic'       : 'dynamic',
-    // FIX: pass the actual location label as customLocation so backend uses it directly
     customLocation:  genMode==='custom' ? locationVariant : '',
     selectedTypes: types,
     imageCount: uploads.length
   };
 
   try {
-    // STEP 1: Get jobId + GCS upload URLs from Webhook A
-    setSubmitStep('Getting job ID…', 10);
+    setSubmitStep('Getting job ID…');
     const respA = await fetch(WEBHOOK_A, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(config)
     });
+
+    // 402 = insufficient credits
+    if (respA.status === 402) {
+      const errData = await respA.json();
+      btn.disabled = false;
+      document.getElementById('submitLbl').innerHTML = '✨ Generate Photos';
+      if (errData.credits_remaining !== undefined && _userCredits) {
+        _userCredits.credits_remaining = errData.credits_remaining;
+        _renderCreditBadge();
+      }
+      showErr(errData.message || 'Insufficient credits.');
+      document.getElementById('upgradeCard').style.display = 'block';
+      document.getElementById('upgradeMsg').textContent = errData.message || 'Insufficient credits.';
+      _updateContactLinks(errData.credits_needed || 0);
+      return;
+    }
+
     if (!respA.ok) throw new Error('Step 1 failed: HTTP ' + respA.status);
     const initData = await respA.json();
-    const { jobId, gcsUploadPaths } = initData;
+    const { jobId, gcsUploadPaths, creditsRemaining } = initData;
     if (!jobId) throw new Error('No job ID returned');
 
-    // STEP 2: Upload each image directly to GCS public bucket
-    setSubmitStep('Uploading ' + uploads.length + ' image(s) to cloud…', 30);
-    await uploadImagesToGCS(uploads, gcsUploadPaths);
-    setSubmitStep('Images uploaded ✓', 70);
+    // Update local credit count after reservation
+    if (_userCredits && creditsRemaining !== undefined) {
+      _userCredits.credits_remaining = creditsRemaining;
+      _renderCreditBadge();
+    }
 
-    // STEP 3: Trigger processing via Webhook B (tiny payload, no images)
-    setSubmitStep('Starting generation…', 85);
+    setSubmitStep('Uploading ' + uploads.length + ' image(s) to cloud…');
+    await uploadImagesToGCS(uploads, gcsUploadPaths);
+    setSubmitStep('Images uploaded ✓');
+
+    setSubmitStep('Starting generation…');
     const gcsUris = gcsUploadPaths.map(p => p.gcsUri);
     const respB = await fetch(WEBHOOK_B, {
       method: 'POST',
@@ -1247,13 +1796,15 @@ async function doSubmit() {
     if (!respB.ok) throw new Error('Step 3 failed: HTTP ' + respB.status);
     await respB.json();
 
-    setSubmitStep('Submitted ✓', 100);
-    showStatusPanel(jobId, uploads.length * types.length, user.email, false, name);
+    setSubmitStep('Submitted ✓');
+    _currentProductName = name;
+    showStatusPanel(jobId, uploads.length * types.length, deliveryEmail, false, name);
 
   } catch(e) {
     showErr('Submission failed — ' + e.message);
     btn.disabled = false;
     document.getElementById('submitLbl').innerHTML = '✨ Generate Photos';
+    if (user) loadCredits(user.email);
   }
 }
 
@@ -1293,6 +1844,11 @@ const POLL_INTERVAL = 30000;
 function showStatusPanel(jobId, totalImages, email, restore=false, productName='') {
   _currentJobId = jobId;
   try { localStorage.setItem('vs_active_job', JSON.stringify({ jobId, totalImages, email, productName })); } catch(e) {}
+  // Make sure we're on the batch tab
+  ['batch','jobs'].forEach(n => {
+    document.getElementById('tab-'+n).classList.toggle('active', n==='batch');
+    document.getElementById('page-'+n).classList.toggle('active', n==='batch');
+  });
   document.getElementById('mainForm').style.display    = 'none';
   document.getElementById('successPanel').style.display = 'block';
   document.getElementById('sCount').textContent  = totalImages;
@@ -1300,9 +1856,48 @@ function showStatusPanel(jobId, totalImages, email, restore=false, productName='
   document.getElementById('sJobId').textContent  = 'Job ID: ' + jobId;
   document.getElementById('dJobId').textContent  = jobId;
   document.getElementById('detailGrid').style.display = 'grid';
+  const dEmailEl = document.getElementById('dEmail');
+  if (dEmailEl) dEmailEl.textContent = email;
+  // Show "＋ New Job" in tab bar while a job is being tracked
+  document.getElementById('tab-newjob').style.display = 'inline-flex';
   if (!restore) setStatusChip('pending');
   addJobToHistory(jobId, totalImages, productName);
   setTimeout(() => startPolling(), restore ? 0 : 4000);
+}
+
+function startNewJob() {
+  // Clear active job state and go back to the upload form
+  clearInterval(_pollTimer);
+  _currentJobId = null;
+  _currentImages = [];
+  try { localStorage.removeItem('vs_active_job'); } catch(e) {}
+  uploads=[]; avatarId='dynamic'; avatarCountry='india'; locationVariant=''; genMode='dynamic';
+  document.getElementById('thumbGrid').innerHTML = '';
+  document.getElementById('productName').value   = '';
+  document.getElementById('catSel').value        = '';
+  document.getElementById('subSel').innerHTML    = '<option value="">Select subcategory…</option>';
+  if (user) document.getElementById('emailDisp').value = user.email;
+  document.querySelectorAll('.tycb input').forEach(cb=>{cb.checked=true; cb.closest('.tycb').classList.add('on');});
+  setMode('dynamic');
+  document.getElementById('countBanner').classList.add('hidden');
+  document.getElementById('submitLbl').innerHTML = '✨ Generate Photos';
+  document.getElementById('submitErr').textContent = '';
+  document.getElementById('statusChip').className = 'status-chip pending';
+  document.getElementById('progTrack').style.display = 'none';
+  document.getElementById('progBar').style.width = '0%';
+  document.getElementById('doneSection').style.display = 'none';
+  document.getElementById('failedSection').style.display = 'none';
+  document.getElementById('detailGrid').style.display = 'none';
+  document.getElementById('imageLinks').innerHTML = '';
+  document.getElementById('tab-newjob').style.display = 'none';
+  document.getElementById('mainForm').style.display    = 'block';
+  document.getElementById('successPanel').style.display = 'none';
+  ['batch','jobs'].forEach(n => {
+    document.getElementById('tab-'+n).classList.toggle('active', n==='batch');
+    document.getElementById('page-'+n).classList.toggle('active', n==='batch');
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  checkReady();
 }
 
 function startPolling() {
@@ -1421,8 +2016,10 @@ function showDoneSection(job) {
     const shotType = img.shot_type  || img.type || img.shotType || '';
     const imgIdx   = img.image_index != null ? img.image_index : (img.index != null ? img.index : i);
     if (!url) return;
-    const fname = `vinsnap_${String(parseInt(imgIdx)+1).padStart(3,'0')}_${shotType||'img'}.jpg`;
-    const label = `Image ${parseInt(imgIdx)+1}${shotType ? ' — ' + (typeLabels[shotType]||shotType) : ''}`;
+    const pName  = (_currentProductName || 'product').replace(/[^a-zA-Z0-9 ]/g,'').trim().replace(/ +/g,'_').slice(0,25) || 'product';
+    const imgNum = img.image_num || img.imageNum || (parseInt(imgIdx)+1);
+    const fname  = `${pName}_${shotType||'img'}${imgNum > 1 ? '_img'+imgNum : ''}.jpg`;
+    const label  = `${typeLabels[shotType] || (shotType ? shotType : 'Image '+(parseInt(imgIdx)+1))}`;
     const row = document.createElement('div');
     row.className = 'img-link';
     row.innerHTML = `<div><div class="img-link-label">${label}</div><div class="img-link-sub">${url.split('/').pop()}</div></div>`
@@ -1434,7 +2031,8 @@ function showDoneSection(job) {
   updateHistoryRow(job.batch_job_id || _currentJobId, job.status || 'completed', successImages);
 }
 
-function resetAll() {
+function resetAll() { startNewJob(); }
+function _resetAll_unused() {
   clearInterval(_pollTimer);
   _currentJobId = null;
   _currentImages = [];
@@ -1445,6 +2043,8 @@ function resetAll() {
   document.getElementById('productName').value   = '';
   document.getElementById('catSel').value        = '';
   document.getElementById('subSel').innerHTML    = '<option value="">Select subcategory…</option>';
+  // Restore delivery email to logged-in user's email
+  if (user) document.getElementById('emailDisp').value = user.email;
   document.querySelectorAll('.tycb input').forEach(cb=>{cb.checked=true; cb.closest('.tycb').classList.add('on');});
   setMode('dynamic');
   document.getElementById('countBanner').classList.add('hidden');
@@ -1465,6 +2065,7 @@ function resetAll() {
 
 // ══ BLOB DOWNLOAD ════════════════════════════════════════════════════
 let _currentImages = [];
+let _currentProductName = '';
 
 async function blobDownload(url, fname, btnEl) {
   if (btnEl) { btnEl.textContent = '⏳'; btnEl.disabled = true; }
@@ -1499,7 +2100,9 @@ function _blobQueue(images, jobSuffix) {
     const url = img.public_url || img.publicUrl || img.url || img.ociUrl || '';
     const shotType = img.shot_type || img.type || img.shotType || '';
     const imgIdx   = img.image_index != null ? img.image_index : i;
-    const fname    = `vinsnap_${String(jobSuffix).slice(-6)}_${String(parseInt(imgIdx)+1).padStart(3,'0')}_${shotType||'img'}.jpg`;
+    const pName2   = (img.product_name || img.productName || _currentProductName || 'product').replace(/[^a-zA-Z0-9 ]/g,'').trim().replace(/ +/g,'_').slice(0,25) || 'product';
+    const imgNum2  = img.image_num || img.imageNum || (parseInt(imgIdx)+1);
+    const fname    = `${pName2}_${shotType||'img'}${imgNum2 > 1 ? '_img'+imgNum2 : ''}.jpg`;
     try {
       const r = await fetch(url); const blob = await r.blob();
       const burl = URL.createObjectURL(blob);
@@ -1553,6 +2156,131 @@ function _renderJobHistory() {
   });
 }
 
+// ══ SHOWCASE SLIDER ══════════════════════════════════════════════════
+let _sliderIdx  = 0;
+let _sliderTotal = 0;
+let _sliderTimer = null;
+const SLIDER_AUTO_MS = 4000;
+
+function _initSlider() {
+  const track = document.getElementById('sliderTrack');
+  const dots  = document.getElementById('sliderDots');
+  if (!track || !dots) return;
+  _sliderTotal = track.children.length;
+  dots.innerHTML = '';
+  for (let i = 0; i < _sliderTotal; i++) {
+    const d = document.createElement('button');
+    d.className = 'slider-dot' + (i === 0 ? ' on' : '');
+    d.onclick = () => sliderGoTo(i);
+    dots.appendChild(d);
+  }
+  _sliderRender();
+  _sliderStartAuto();
+}
+
+function _sliderRender() {
+  const track = document.getElementById('sliderTrack');
+  if (track) track.style.transform = `translateX(-${_sliderIdx * 100}%)`;
+  document.querySelectorAll('.slider-dot').forEach((d, i) => {
+    d.classList.toggle('on', i === _sliderIdx);
+  });
+}
+
+function sliderMove(dir) {
+  _sliderIdx = (_sliderIdx + dir + _sliderTotal) % _sliderTotal;
+  _sliderRender();
+  _sliderRestartAuto();
+}
+
+function sliderGoTo(idx) {
+  _sliderIdx = idx;
+  _sliderRender();
+  _sliderRestartAuto();
+}
+
+function _sliderStartAuto() {
+  clearInterval(_sliderTimer);
+  _sliderTimer = setInterval(() => sliderMove(1), SLIDER_AUTO_MS);
+}
+
+function _sliderRestartAuto() {
+  clearInterval(_sliderTimer);
+  _sliderTimer = setInterval(() => sliderMove(1), SLIDER_AUTO_MS);
+}
+
+// Init on DOM ready
+document.addEventListener('DOMContentLoaded', _initSlider);
+
+// ══ CREDITS ══════════════════════════════════════════════════════════
+
+async function loadCredits(email) {
+  try {
+    const resp = await fetch(
+      `${SB_URL}/rest/v1/user_credits?user_email=eq.${encodeURIComponent(email)}&select=*`,
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    const rows = await resp.json();
+    if (rows && rows.length) {
+      _userCredits = rows[0];
+    } else {
+      // No row yet — show 20 optimistically, fn_init creates it on first job
+      _userCredits = { credits_remaining: 20, credits_reserved: 0, plan_name: 'free', expires_at: null };
+    }
+    _renderCreditBadge();
+    checkReady();
+  } catch(e) {
+    console.warn('loadCredits failed:', e);
+  }
+}
+
+function _renderCreditBadge() {
+  if (!user || !_userCredits) return;
+  const rem   = _userCredits.credits_remaining || 0;
+  const badge = document.getElementById('creditBadge');
+  const count = document.getElementById('creditCount');
+  const infoRow = document.getElementById('creditInfoRow');
+  const infoVal = document.getElementById('creditInfoVal');
+  const mc    = document.getElementById('modalCreditCount');
+
+  badge.style.display = 'inline-flex';
+  count.textContent   = rem + ' credits';
+  badge.className = 'credit-badge' + (rem === 0 ? ' empty' : rem <= 5 ? ' low' : '');
+
+  infoRow.style.display = 'flex';
+  infoVal.textContent   = rem + ' credit' + (rem !== 1 ? 's' : '') + ' remaining';
+  infoVal.className = 'cr-val' + (rem === 0 ? ' danger' : rem <= 5 ? ' warn' : '');
+
+  if (mc) mc.textContent = rem + ' credits';
+}
+
+function _updateContactLinks(creditsNeeded) {
+  const email  = user ? user.email : '';
+  const waMsg  = encodeURIComponent(`Hi VinSnap, I want to buy credits.\nAccount: ${email}\nI need at least ${creditsNeeded} credits.`);
+  const eSub   = encodeURIComponent('VinSnap Credits Request');
+  const eBody  = encodeURIComponent(`Hi,\n\nI'd like to buy credits for my VinSnap account.\nEmail: ${email}\nCredits needed: ${creditsNeeded}\n\nPlease advise.\n\nThank you.`);
+  const waUrl  = `https://wa.me/919841536868?text=${waMsg}`;
+  const emUrl  = `mailto:credits@vinmediaai.online?subject=${eSub}&body=${eBody}`;
+  ['upgradeWaBtn','modalWaBtn'].forEach(id => { const el=document.getElementById(id); if(el) el.href=waUrl; });
+  ['upgradeEmailBtn','modalEmailBtn'].forEach(id => { const el=document.getElementById(id); if(el) el.href=emUrl; });
+}
+
+function openUpgradeModal() {
+  _updateContactLinks(0);
+  _renderCreditBadge();
+  document.getElementById('upgradeModal').classList.add('open');
+}
+function closeUpgradeModal() {
+  document.getElementById('upgradeModal').classList.remove('open');
+}
+
+function toggleInlinePlans() {
+  const wrap = document.getElementById('inlinePlansWrap');
+  const btn  = document.getElementById('plansToggleBtn');
+  const open = wrap.style.display === 'none';
+  wrap.style.display = open ? 'block' : 'none';
+  btn.textContent    = open ? '▲ Hide plans' : '▼ View pricing plans';
+}
+
 // ══ TOAST ════════════════════════════════════════════════════════════
 let _tt;
 function toast(msg, dur=3000) {
@@ -1567,7 +2295,15 @@ function switchTab(t) {
     document.getElementById('tab-'+n).classList.toggle('active', n===t);
     document.getElementById('page-'+n).classList.toggle('active', n===t);
   });
-  if (t === 'jobs') loadJobs();
+  if (t === 'jobs') {
+    loadJobs();
+  } else if (t === 'batch') {
+    // Restore correct sub-panel: status tracker if job active, upload form otherwise
+    const hasActiveJob = !!_currentJobId;
+    document.getElementById('mainForm').style.display     = hasActiveJob ? 'none'  : 'block';
+    document.getElementById('successPanel').style.display = hasActiveJob ? 'block' : 'none';
+    if (hasActiveJob) window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
 
 // ══ JOBS PAGE ════════════════════════════════════════════════════════
@@ -1645,11 +2381,17 @@ function renderJob(job) {
     const url = img.public_url || img.publicUrl || img.url || '';
     if (!url) return;
     const su = jEsc(url);
+    const sType  = img.shot_type || img.shotType || img.type || '';
+    const sNum   = img.image_num || img.imageNum || (i+1);
+    const SLBL   = {hero:'Hero',lifestyle1:'Lifestyle 1',lifestyle2:'Lifestyle 2',lifestyle3:'Lifestyle 3'};
+    const tLabel = SLBL[sType] || (sType ? sType : 'Image ' + (i+1));
+    const pn     = (name||'product').replace(/[^a-zA-Z0-9 ]/g,'').trim().replace(/ +/g,'_').slice(0,25);
+    const dlName = pn + '_' + (sType||'img') + (sNum > 1 ? '_img'+sNum : '') + '.jpg';
     tiles += '<div class="jtile">'
       + '<img class="jtile-img" src="' + su + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'
       + '<div class="jtile-ph">&#128444;</div>'
-      + '<div class="jtile-foot"><span class="jtile-lbl">Image ' + (i+1) + '</span>'
-      + '<a class="j-save" href="' + su + '" download="vinsnap_img' + (i+1) + '.jpg" target="_blank">&#11015; Save</a>'
+      + '<div class="jtile-foot"><span class="jtile-lbl">' + tLabel + '</span>'
+      + '<a class="j-save" href="' + su + '" download="' + dlName + '" data-shot="' + sType + '" data-num="' + sNum + '" target="_blank">&#11015; Save</a>'
       + '</div></div>';
   });
 
@@ -1709,8 +2451,18 @@ function jDlAll(jobId, e) {
   if (e) e.preventDefault();
   const el = document.getElementById('jimgs-' + jobId);
   if (!el) return;
-  const links = el.querySelectorAll('.j-save');
-  const imgs = Array.from(links).map((a, i) => ({ public_url: a.href, image_index: i, shot_type: '' }));
+  // Use stored images data with shot_type if available
+  const jEntry = Object.values(_jExp).length >= 0 && window._jImgCache && window._jImgCache[jobId];
+  const jCard  = el.closest('.jcard');
+  const jName  = jCard ? (jCard.querySelector('.jcard-name')?.textContent || 'product') : 'product';
+  const links  = el.querySelectorAll('.j-save');
+  const imgs   = Array.from(links).map((a, i) => ({
+    public_url:   a.href,
+    image_index:  i,
+    shot_type:    a.dataset.shot || '',
+    image_num:    parseInt(a.dataset.num || '1'),
+    product_name: jName,
+  }));
   _blobQueue(imgs, jobId);
 }
 
