@@ -545,8 +545,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
     </div>
   </div>
 
-  <!-- IMAGE TYPES -->
-  <div class="card">
+  <!-- IMAGE TYPES (hidden in Templates mode — pose selection replaces this entirely) -->
+  <div class="card" id="imageTypesCard">
     <div class="ctitle">🖼️ Select Image Types</div>
     <div class="tygrid">
       <label class="tycb on"><input type="checkbox" value="hero" checked onchange="onTypeTick(this)"><div><div class="tycb-lbl">🎯 Hero</div><div class="tycb-sub">Clean product shot</div></div></label>
@@ -555,6 +555,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       <label class="tycb on"><input type="checkbox" value="lifestyle3" checked onchange="onTypeTick(this)"><div><div class="tycb-lbl">🔍 Lifestyle 3</div><div class="tycb-sub">Close-up / detail</div></div></label>
     </div>
   </div>
+
 
   <!-- MODE -->
   <div class="card">
@@ -580,7 +581,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
         Select a category above to see available templates.
       </div>
       <div id="templatePoseWrap" style="display:none">
-        <div class="sec-lbl">🧍 Choose a Pose</div>
+        <div class="sec-lbl" style="display:flex;align-items:center;justify-content:space-between;padding-right:20px">
+          <span>🧍 Choose Poses <span style="font-weight:400;color:var(--dim);font-size:.78em">(max 4 — one image per pose)</span></span>
+          <span id="templatePoseCounter" style="font-size:.76rem;font-weight:700;color:var(--accent);background:rgba(99,102,241,.1);padding:2px 10px;border-radius:20px">0/4 selected</span>
+        </div>
         <div class="loc-grid" id="templatePoseGrid" style="grid-template-columns:repeat(2,1fr);padding:0 20px 16px"></div>
         <div id="templatePoseEmpty" style="display:none;padding:0 20px 16px;font-size:.82rem;color:var(--dim)">
           No poses configured yet.
@@ -1246,7 +1250,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 const SB_URL     = 'https://rqzflfyqazklfnfxefct.supabase.co';
 const SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxemZsZnlxYXprbGZuZnhlZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMjgxMDIsImV4cCI6MjA5MTgwNDEwMn0.q3F9dEDdNQ7kBGtReTQx6r8wvgGks5lL-ThZAi2uPEY';
 const WEBHOOK_A  = 'https://vinsnap-init-gdsqg4fv7q-uc.a.run.app/';
-const WEBHOOK_B  = 'https://vinsnap-processdev-gdsqg4fv7q-uc.a.run.app/';
+const WEBHOOK_B  = 'https://vinsnap-process-gdsqg4fv7q-uc.a.run.app/';
 const GCS_BUCKET = 'vinsnap-store';
 const TURNSTILE_SITE_KEY = '0x4AAAAAADofEaJCDdqf1MWY'; // ← replace with the Site Key from Cloudflare Turnstile dashboard
 const { createClient } = window.supabase;
@@ -1260,7 +1264,8 @@ let avatarCountry  = 'india';
 let locationVariant = '';
 let genMode        = 'dynamic';
 let templateId     = '';
-let templatePoseId = '';
+let templatePoseIds = []; // up to MAX_TEMPLATE_POSES pose_ids — one generated image per pose
+const MAX_TEMPLATE_POSES = 4;
 let TEMPLATES_BY_CAT = {}; // { category: [{id,name,thumb}] } — loaded from templates_manifest.json
 let TEMPLATE_POSES   = []; // [{id,label}] — loaded from template_poses_manifest.json
 let _userCredits   = null; // { credits_remaining, credits_reserved, plan_name, expires_at }
@@ -1759,7 +1764,7 @@ function onCatChange() {
     o.textContent = SUBCAT_LABELS[s] || s.replace(/_/g,' ').replace(/\w/g, c=>c.toUpperCase());
     sub.appendChild(o);
   });
-  if (genMode === 'template') { templateId = ''; templatePoseId = ''; renderTemplates(); }
+  if (genMode === 'template') { templateId = ''; templatePoseIds = []; renderTemplates(); }
   checkReady();
 }
 
@@ -1833,12 +1838,15 @@ function getTypes() {
 
 // ══ COUNT BANNER ═════════════════════════════════════════════════════
 function updateCounter() {
-  const imgs=uploads.length, types=getTypes().length, total=imgs*types;
+  const imgs = uploads.length;
+  const types = genMode === 'template' ? templatePoseIds.length : getTypes().length;
+  const total = imgs*types;
   const b=document.getElementById('countBanner');
   if (total>0) {
     b.classList.remove('hidden');
     document.getElementById('countNum').textContent  = total;
-    document.getElementById('countBreak').textContent = `${imgs} image${imgs!==1?'s':''} × ${types} type${types!==1?'s':''}`;
+    const typeLbl = genMode === 'template' ? 'pose' : 'type';
+    document.getElementById('countBreak').textContent = `${imgs} image${imgs!==1?'s':''} × ${types} ${typeLbl}${types!==1?'s':''}`;
   } else b.classList.add('hidden');
 }
 
@@ -1850,10 +1858,14 @@ function setMode(m) {
   document.getElementById('modeTpl').classList.toggle('on', m==='template');
   document.getElementById('customPanel').style.display   = m==='custom'   ? 'block' : 'none';
   document.getElementById('templatePanel').style.display = m==='template' ? 'block' : 'none';
+  // Templates mode: hero/lifestyle1-3 selection doesn't apply — pose selection
+  // replaces it entirely (one generated image per selected pose, no hero shot).
+  document.getElementById('imageTypesCard').style.display = m==='template' ? 'none' : 'block';
   if (m==='dynamic') { avatarId='dynamic'; avatarCountry='india'; locationVariant=''; }
   if (m==='template') { renderTemplates(); renderTemplatePoses(); }
   checkReady();
   updateSummaryBar();
+  updateCounter();
 }
 
 // ══ TEMPLATE FUNCTIONS ═══════════════════════════════════════════════
@@ -1934,25 +1946,50 @@ function renderTemplatePoses() {
 
   if (!TEMPLATE_POSES.length) {
     empty.style.display = 'block';
+    _updatePoseCounter();
     return;
   }
   empty.style.display = 'none';
 
   TEMPLATE_POSES.forEach(p => {
-    const d = document.createElement('div');
-    d.className = 'loc-card' + (p.id === templatePoseId ? ' on' : '');
-    d.onclick = () => selectTemplatePose(d, p.id);
-    d.innerHTML = `<div class="loc-card-name">${p.label}</div>`;
+    const checked = templatePoseIds.includes(p.id);
+    const d = document.createElement('label');
+    d.className = 'tycb' + (checked ? ' on' : '');
+    d.style.cursor = 'pointer';
+    d.innerHTML =
+        `<input type="checkbox" value="${p.id}" ${checked ? 'checked' : ''} onchange="toggleTemplatePose('${p.id}', this)">`
+      + `<div><div class="tycb-lbl">${p.label}</div></div>`;
     grid.appendChild(d);
   });
+  _updatePoseCounter();
 }
 
-function selectTemplatePose(el, id) {
-  document.querySelectorAll('#templatePoseGrid .loc-card').forEach(c=>c.classList.remove('on'));
-  el.classList.add('on');
-  templatePoseId = id;
+function toggleTemplatePose(id, checkboxEl) {
+  const idx = templatePoseIds.indexOf(id);
+  if (checkboxEl.checked) {
+    if (idx === -1) {
+      if (templatePoseIds.length >= MAX_TEMPLATE_POSES) {
+        checkboxEl.checked = false;
+        toast(`Maximum ${MAX_TEMPLATE_POSES} poses can be selected`);
+        return;
+      }
+      templatePoseIds.push(id);
+    }
+  } else {
+    if (idx !== -1) templatePoseIds.splice(idx, 1);
+  }
+  checkboxEl.closest('.tycb').classList.toggle('on', checkboxEl.checked);
+  _updatePoseCounter();
+  updateCounter();
   checkReady();
   updateSummaryBar();
+}
+
+function _updatePoseCounter() {
+  const el = document.getElementById('templatePoseCounter');
+  if (!el) return;
+  el.textContent = `${templatePoseIds.length}/${MAX_TEMPLATE_POSES} selected`;
+  el.style.color = templatePoseIds.length >= MAX_TEMPLATE_POSES ? 'var(--green)' : 'var(--accent)';
 }
 
 // ══ AVATAR FUNCTIONS (minimal — only what's needed) ══════════════════
@@ -1991,7 +2028,8 @@ function selectLoc(el) {
 function checkReady() {
   const deliveryEmail = (document.getElementById('emailDisp').value || '').trim();
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(deliveryEmail);
-  const creditsNeeded = uploads.length * getTypes().length;
+  const typeCount = genMode === 'template' ? templatePoseIds.length : getTypes().length;
+  const creditsNeeded = uploads.length * typeCount;
 
   // Update credit cost display
   const costRow = document.getElementById('creditCostRow');
@@ -2006,11 +2044,11 @@ function checkReady() {
   }
 
   const hasCredits = !user || !_userCredits || _userCredits.credits_remaining >= creditsNeeded;
-  const templateOk = genMode !== 'template' || (!!templateId && !!templatePoseId);
+  const templateOk = genMode !== 'template' || (!!templateId && templatePoseIds.length > 0);
   const ok = user &&
     uploads.length > 0 &&
     document.getElementById('catSel').value &&
-    getTypes().length > 0 &&
+    typeCount > 0 &&
     document.getElementById('productName').value.trim() &&
     emailValid &&
     hasCredits &&
@@ -2071,11 +2109,12 @@ function updateSummaryBar() {
     const t = (TEMPLATES_BY_CAT[cat] || []).find(x => x.id === templateId);
     templateName = t ? t.name : templateId;
   }
-  // Get pose display name
-  let poseName = '—';
-  if (mode === 'template' && templatePoseId) {
-    const p = TEMPLATE_POSES.find(x => x.id === templatePoseId);
-    poseName = p ? p.label : templatePoseId;
+  // Get selected pose display names (up to MAX_TEMPLATE_POSES)
+  let poseNames = '—';
+  if (mode === 'template' && templatePoseIds.length) {
+    poseNames = templatePoseIds
+      .map(id => { const p = TEMPLATE_POSES.find(x => x.id === id); return p ? p.label : id; })
+      .join(', ');
   }
 
   const modeLbl = mode === 'custom' ? '🎨 Custom' : mode === 'template' ? '🖼️ Template' : '🤖 Dynamic';
@@ -2089,7 +2128,7 @@ function updateSummaryBar() {
     (mode === 'custom' ? chip('🧑 Avatar', avatarName, avatarName !== '—') : '') +
     (mode === 'custom' ? chip('📍 Location', locName !== '—' ? locName : 'Not selected', locName !== '—') : '') +
     (mode === 'template' ? chip('🖼️ Template', templateName, templateName !== '—') : '') +
-    (mode === 'template' ? chip('🧍 Pose', poseName, poseName !== '—') : '');
+    (mode === 'template' ? chip(`🧍 Poses (${templatePoseIds.length}/${MAX_TEMPLATE_POSES})`, poseNames, poseNames !== '—') : '');
 
   // Show bar only when there's something meaningful
   const hasAny = imgCount > 0 || productName || catEl.value;
@@ -2101,17 +2140,20 @@ async function doSubmit() {
   const name  = document.getElementById('productName').value.trim();
   const cat   = document.getElementById('catSel').value;
   const sub   = document.getElementById('subSel').value;
-  const types = getTypes();
+  // Templates mode: "types" being generated ARE the selected poses (max 4),
+  // hero/lifestyle1-3 don't apply and their checkboxes are hidden entirely.
+  const types = genMode === 'template' ? templatePoseIds.slice() : getTypes();
   const deliveryEmail = (document.getElementById('emailDisp').value || '').trim();
   document.getElementById('submitErr').textContent = '';
   if (!uploads.length) { showErr('Please upload at least one image.'); return; }
   if (!cat)            { showErr('Please select a category.'); return; }
-  if (!types.length)   { showErr('Please select at least one image type.'); return; }
+  if (genMode==='template' && !types.length) { showErr('Please select at least one pose.'); return; }
+  if (genMode!=='template' && !types.length) { showErr('Please select at least one image type.'); return; }
   if (!name)           { showErr('Please enter a product name.'); return; }
   if (!deliveryEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(deliveryEmail)) { showErr('Please enter a valid delivery email address.'); return; }
   if (genMode==='custom' && !locationVariant) { showErr('Please select a location in Custom mode.'); return; }
   if (genMode==='template' && !templateId)    { showErr('Please select a template.'); return; }
-  if (genMode==='template' && !templatePoseId){ showErr('Please select a pose for your template.'); return; }
+  if (genMode==='template' && types.length > MAX_TEMPLATE_POSES) { showErr(`Maximum ${MAX_TEMPLATE_POSES} poses allowed.`); return; }
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
@@ -2123,8 +2165,10 @@ async function doSubmit() {
     avatarCountry:   genMode==='custom' ? avatarCountry   : 'india',
     locationVariant: genMode==='custom' ? 'dynamic'       : 'dynamic',
     customLocation:  genMode==='custom' ? locationVariant : '',
-    templateId:      genMode==='template' ? templateId      : '',
-    templatePoseId:  genMode==='template' ? templatePoseId  : '',
+    templateId:      genMode==='template' ? templateId       : '',
+    // Array of chosen pose_ids (up to 4) — backend generates exactly one
+    // image per pose per uploaded product photo, keyed "{imgIndex}_{pose_id}".
+    templatePoseIds: genMode==='template' ? templatePoseIds  : [],
     selectedTypes: types,
     imageCount: uploads.length
   };
@@ -2253,13 +2297,13 @@ function startNewJob() {
   _currentJobId = null;
   _currentImages = [];
   try { localStorage.removeItem('vs_active_job'); } catch(e) {}
-  uploads=[]; avatarId='dynamic'; avatarCountry='india'; locationVariant=''; genMode='dynamic'; templateId=''; templatePoseId='';
+  uploads=[]; avatarId='dynamic'; avatarCountry='india'; locationVariant=''; genMode='dynamic'; templateId=''; templatePoseIds=[];
   document.getElementById('thumbGrid').innerHTML = '';
   document.getElementById('productName').value   = '';
   document.getElementById('catSel').value        = '';
   document.getElementById('subSel').innerHTML    = '<option value="">Select subcategory…</option>';
   if (user) document.getElementById('emailDisp').value = user.email;
-  document.querySelectorAll('.tycb input').forEach(cb=>{cb.checked=true; cb.closest('.tycb').classList.add('on');});
+  document.querySelectorAll('#imageTypesCard .tycb input').forEach(cb=>{cb.checked=true; cb.closest('.tycb').classList.add('on');});
   setMode('dynamic');
   document.getElementById('countBanner').classList.add('hidden');
   document.getElementById('submitLbl').innerHTML = '✨ Generate Photos';
@@ -2401,7 +2445,8 @@ function showDoneSection(job) {
     const pName  = (_currentProductName || 'product').replace(/[^a-zA-Z0-9 ]/g,'').trim().replace(/ +/g,'_').slice(0,25) || 'product';
     const imgNum = img.image_num || img.imageNum || (parseInt(imgIdx)+1);
     const fname  = `${pName}_${shotType||'img'}${imgNum > 1 ? '_img'+imgNum : ''}.jpg`;
-    const label  = `${typeLabels[shotType] || (shotType ? shotType : 'Image '+(parseInt(imgIdx)+1))}`;
+    const poseLbl = (TEMPLATE_POSES.find(p => p.id === shotType) || {}).label;
+    const label  = `${typeLabels[shotType] || poseLbl || (shotType ? shotType : 'Image '+(parseInt(imgIdx)+1))}`;
     const tile = document.createElement('div');
     tile.className = 'jtile';
     const su = url.replace(/"/g,'&quot;');
@@ -2835,7 +2880,8 @@ function renderJob(job) {
     const sType  = img.shot_type || img.shotType || img.type || '';
     const sNum   = img.image_num || img.imageNum || (i+1);
     const SLBL   = {hero:'Hero',lifestyle1:'Lifestyle 1',lifestyle2:'Lifestyle 2',lifestyle3:'Lifestyle 3'};
-    const tLabel = SLBL[sType] || (sType ? sType : 'Image ' + (i+1));
+    const poseLbl = (TEMPLATE_POSES.find(p => p.id === sType) || {}).label;
+    const tLabel = SLBL[sType] || poseLbl || (sType ? sType : 'Image ' + (i+1));
     const pn     = (name||'product').replace(/[^a-zA-Z0-9 ]/g,'').trim().replace(/ +/g,'_').slice(0,25);
     const dlName = pn + '_' + (sType||'img') + (sNum > 1 ? '_img'+sNum : '') + '.jpg';
     tiles += '<div class="jtile">'
