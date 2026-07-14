@@ -559,7 +559,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
   <!-- MODE -->
   <div class="card">
     <div class="ctitle">⚙️ Generation Mode</div>
-    <div class="mrow">
+    <div class="mrow" style="grid-template-columns:1fr 1fr 1fr">
       <div class="mcard on" id="modeDyn" onclick="setMode('dynamic')">
         <div class="mico">⚡</div><div class="mlbl">Dynamic</div>
         <div class="msub">AI auto-selects avatar & location from your category</div>
@@ -567,6 +567,24 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       <div class="mcard" id="modeCus" onclick="setMode('custom')">
         <div class="mico">🎨</div><div class="mlbl">Custom</div>
         <div class="msub">Pick avatar & location — applied across all images</div>
+      </div>
+      <div class="mcard" id="modeTpl" onclick="setMode('template')">
+        <div class="mico">🖼️</div><div class="mlbl">Templates</div>
+        <div class="msub">Pick a ready-made pregenerated look</div>
+      </div>
+    </div>
+    <div id="templatePanel" style="display:none">
+      <div class="sec-lbl">🖼️ Choose a Template</div>
+      <div class="loc-grid" id="templateGrid" style="grid-template-columns:repeat(3,1fr)"></div>
+      <div id="templateEmpty" style="display:none;padding:6px 20px 16px;font-size:.82rem;color:var(--dim)">
+        Select a category above to see available templates.
+      </div>
+      <div id="templatePoseWrap" style="display:none">
+        <div class="sec-lbl">🧍 Choose a Pose</div>
+        <div class="loc-grid" id="templatePoseGrid" style="grid-template-columns:repeat(2,1fr);padding:0 20px 16px"></div>
+        <div id="templatePoseEmpty" style="display:none;padding:0 20px 16px;font-size:.82rem;color:var(--dim)">
+          No poses configured yet.
+        </div>
       </div>
     </div>
     <div id="customPanel">
@@ -1241,6 +1259,10 @@ let avatarId       = 'dynamic';
 let avatarCountry  = 'india';
 let locationVariant = '';
 let genMode        = 'dynamic';
+let templateId     = '';
+let templatePoseId = '';
+let TEMPLATES_BY_CAT = {}; // { category: [{id,name,thumb}] } — loaded from templates_manifest.json
+let TEMPLATE_POSES   = []; // [{id,label}] — loaded from template_poses_manifest.json
 let _userCredits   = null; // { credits_remaining, credits_reserved, plan_name, expires_at }
 
 // ══ SUBCATEGORY MAP ══════════════════════════════════════════════════
@@ -1737,6 +1759,7 @@ function onCatChange() {
     o.textContent = SUBCAT_LABELS[s] || s.replace(/_/g,' ').replace(/\w/g, c=>c.toUpperCase());
     sub.appendChild(o);
   });
+  if (genMode === 'template') { templateId = ''; templatePoseId = ''; renderTemplates(); }
   checkReady();
 }
 
@@ -1824,8 +1847,111 @@ function setMode(m) {
   genMode = m;
   document.getElementById('modeDyn').classList.toggle('on', m==='dynamic');
   document.getElementById('modeCus').classList.toggle('on', m==='custom');
-  document.getElementById('customPanel').style.display = m==='custom' ? 'block' : 'none';
+  document.getElementById('modeTpl').classList.toggle('on', m==='template');
+  document.getElementById('customPanel').style.display   = m==='custom'   ? 'block' : 'none';
+  document.getElementById('templatePanel').style.display = m==='template' ? 'block' : 'none';
   if (m==='dynamic') { avatarId='dynamic'; avatarCountry='india'; locationVariant=''; }
+  if (m==='template') { renderTemplates(); renderTemplatePoses(); }
+  checkReady();
+  updateSummaryBar();
+}
+
+// ══ TEMPLATE FUNCTIONS ═══════════════════════════════════════════════
+async function loadTemplateManifest() {
+  try {
+    const r = await fetch('https://storage.googleapis.com/vinsnap-store/config/templates_manifest.json', {cache:'no-store'});
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    TEMPLATES_BY_CAT = await r.json(); // { womens_fashion: [{id,name,thumb}], ... }
+  } catch(e) {
+    console.warn('template manifest load failed:', e);
+    TEMPLATES_BY_CAT = {};
+  }
+  try {
+    const r2 = await fetch('https://storage.googleapis.com/vinsnap-store/config/template_poses_manifest.json', {cache:'no-store'});
+    if (!r2.ok) throw new Error('HTTP '+r2.status);
+    TEMPLATE_POSES = await r2.json(); // [{id,label}, ...]
+  } catch(e) {
+    console.warn('template poses manifest load failed:', e);
+    TEMPLATE_POSES = [];
+  }
+  if (genMode === 'template') { renderTemplates(); renderTemplatePoses(); }
+}
+document.addEventListener('DOMContentLoaded', loadTemplateManifest);
+
+function renderTemplates() {
+  const cat   = document.getElementById('catSel').value;
+  const grid  = document.getElementById('templateGrid');
+  const empty = document.getElementById('templateEmpty');
+  if (!grid || !empty) return;
+  grid.innerHTML = '';
+
+  if (!cat) {
+    empty.textContent = 'Select a category above to see available templates.';
+    empty.style.display = 'block';
+    document.getElementById('templatePoseWrap').style.display = 'none';
+    return;
+  }
+
+  const list = TEMPLATES_BY_CAT[cat] || [];
+  if (!list.length) {
+    empty.textContent = 'No templates available for this category yet.';
+    empty.style.display = 'block';
+    document.getElementById('templatePoseWrap').style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.forEach(t => {
+    const d = document.createElement('div');
+    d.className = 'loc-card' + (t.id === templateId ? ' on' : '');
+    d.style.padding = '0'; d.style.overflow = 'hidden';
+    d.onclick = () => selectTemplate(d, t.id);
+    d.innerHTML =
+        `<img src="${t.thumb}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block" loading="lazy" onerror="this.style.display='none'">`
+      + `<div style="padding:6px 4px;font-size:11px;font-weight:600">${t.name}</div>`;
+    grid.appendChild(d);
+  });
+}
+
+function selectTemplate(el, id) {
+  document.querySelectorAll('#templateGrid .loc-card').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  templateId = id;
+  document.getElementById('templatePoseWrap').style.display = 'block';
+  renderTemplatePoses();
+  checkReady();
+  updateSummaryBar();
+}
+
+function renderTemplatePoses() {
+  const wrap  = document.getElementById('templatePoseWrap');
+  const grid  = document.getElementById('templatePoseGrid');
+  const empty = document.getElementById('templatePoseEmpty');
+  if (!wrap || !grid || !empty) return;
+  if (!templateId) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  grid.innerHTML = '';
+
+  if (!TEMPLATE_POSES.length) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  TEMPLATE_POSES.forEach(p => {
+    const d = document.createElement('div');
+    d.className = 'loc-card' + (p.id === templatePoseId ? ' on' : '');
+    d.onclick = () => selectTemplatePose(d, p.id);
+    d.innerHTML = `<div class="loc-card-name">${p.label}</div>`;
+    grid.appendChild(d);
+  });
+}
+
+function selectTemplatePose(el, id) {
+  document.querySelectorAll('#templatePoseGrid .loc-card').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  templatePoseId = id;
+  checkReady();
   updateSummaryBar();
 }
 
@@ -1880,13 +2006,15 @@ function checkReady() {
   }
 
   const hasCredits = !user || !_userCredits || _userCredits.credits_remaining >= creditsNeeded;
+  const templateOk = genMode !== 'template' || (!!templateId && !!templatePoseId);
   const ok = user &&
     uploads.length > 0 &&
     document.getElementById('catSel').value &&
     getTypes().length > 0 &&
     document.getElementById('productName').value.trim() &&
     emailValid &&
-    hasCredits;
+    hasCredits &&
+    templateOk;
   document.getElementById('submitBtn').disabled = !ok;
   updateSummaryBar();
 
@@ -1936,14 +2064,32 @@ function updateSummaryBar() {
   const chip = (label, value, hasValue) =>
     `<span class="sel-chip${hasValue ? '' : ' empty'}"><span class="chip-lbl">${label}</span>${value}</span>`;
 
+  // Get template display name
+  let templateName = '—';
+  if (mode === 'template' && templateId) {
+    const cat = catEl.value;
+    const t = (TEMPLATES_BY_CAT[cat] || []).find(x => x.id === templateId);
+    templateName = t ? t.name : templateId;
+  }
+  // Get pose display name
+  let poseName = '—';
+  if (mode === 'template' && templatePoseId) {
+    const p = TEMPLATE_POSES.find(x => x.id === templatePoseId);
+    poseName = p ? p.label : templatePoseId;
+  }
+
+  const modeLbl = mode === 'custom' ? '🎨 Custom' : mode === 'template' ? '🖼️ Template' : '🤖 Dynamic';
+
   chips.innerHTML =
     chip('📸 Images', imgCount > 0 ? imgCount + (imgCount===1?' image':' images') : 'None', imgCount > 0) +
     chip('🏷️ Product', productName || 'Not set', !!productName) +
     chip('📂 Category', catText && catEl.value ? catText.replace(/^[^\w]*/, '') : 'Not selected', !!catEl.value) +
     (subEl.value ? chip('📌 Subcategory', subText.replace(/^[^\w]*/, ''), true) : '') +
-    chip('⚡ Mode', mode === 'custom' ? '🎨 Custom' : '🤖 Dynamic', true) +
+    chip('⚡ Mode', modeLbl, true) +
     (mode === 'custom' ? chip('🧑 Avatar', avatarName, avatarName !== '—') : '') +
-    (mode === 'custom' ? chip('📍 Location', locName !== '—' ? locName : 'Not selected', locName !== '—') : '');
+    (mode === 'custom' ? chip('📍 Location', locName !== '—' ? locName : 'Not selected', locName !== '—') : '') +
+    (mode === 'template' ? chip('🖼️ Template', templateName, templateName !== '—') : '') +
+    (mode === 'template' ? chip('🧍 Pose', poseName, poseName !== '—') : '');
 
   // Show bar only when there's something meaningful
   const hasAny = imgCount > 0 || productName || catEl.value;
@@ -1964,6 +2110,8 @@ async function doSubmit() {
   if (!name)           { showErr('Please enter a product name.'); return; }
   if (!deliveryEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(deliveryEmail)) { showErr('Please enter a valid delivery email address.'); return; }
   if (genMode==='custom' && !locationVariant) { showErr('Please select a location in Custom mode.'); return; }
+  if (genMode==='template' && !templateId)    { showErr('Please select a template.'); return; }
+  if (genMode==='template' && !templatePoseId){ showErr('Please select a pose for your template.'); return; }
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
@@ -1975,6 +2123,8 @@ async function doSubmit() {
     avatarCountry:   genMode==='custom' ? avatarCountry   : 'india',
     locationVariant: genMode==='custom' ? 'dynamic'       : 'dynamic',
     customLocation:  genMode==='custom' ? locationVariant : '',
+    templateId:      genMode==='template' ? templateId      : '',
+    templatePoseId:  genMode==='template' ? templatePoseId  : '',
     selectedTypes: types,
     imageCount: uploads.length
   };
@@ -2103,7 +2253,7 @@ function startNewJob() {
   _currentJobId = null;
   _currentImages = [];
   try { localStorage.removeItem('vs_active_job'); } catch(e) {}
-  uploads=[]; avatarId='dynamic'; avatarCountry='india'; locationVariant=''; genMode='dynamic';
+  uploads=[]; avatarId='dynamic'; avatarCountry='india'; locationVariant=''; genMode='dynamic'; templateId=''; templatePoseId='';
   document.getElementById('thumbGrid').innerHTML = '';
   document.getElementById('productName').value   = '';
   document.getElementById('catSel').value        = '';
