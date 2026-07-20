@@ -580,14 +580,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       <div id="templateEmpty" style="display:none;padding:6px 20px 16px;font-size:.82rem;color:var(--dim)">
         Select a category above to see available templates.
       </div>
+      <div id="templateModeNote" style="display:none;margin:0 20px 12px;padding:9px 12px;border-radius:var(--rx);background:rgba(99,102,241,.08);color:var(--dim2);font-size:.8rem;font-weight:500"></div>
       <div id="templatePoseWrap" style="display:none">
         <div class="sec-lbl" style="display:flex;align-items:center;justify-content:space-between;padding-right:20px">
-          <span>🧍 Choose Poses <span style="font-weight:400;color:var(--dim);font-size:.78em">(max 4 — one image per pose)</span></span>
+          <span>🧍 Choose Poses <span style="font-weight:400;color:var(--dim);font-size:.78em">(select 1–4 — one image per pose)</span></span>
           <span id="templatePoseCounter" style="font-size:.76rem;font-weight:700;color:var(--accent);background:rgba(99,102,241,.1);padding:2px 10px;border-radius:20px">0/4 selected</span>
         </div>
         <div class="loc-grid" id="templatePoseGrid" style="grid-template-columns:repeat(2,1fr);padding:0 20px 16px"></div>
         <div id="templatePoseEmpty" style="display:none;padding:0 20px 16px;font-size:.82rem;color:var(--dim)">
-          No poses configured yet.
+          No poses configured for this template yet.
         </div>
       </div>
     </div>
@@ -1250,7 +1251,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
 const SB_URL     = 'https://rqzflfyqazklfnfxefct.supabase.co';
 const SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxemZsZnlxYXprbGZuZnhlZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMjgxMDIsImV4cCI6MjA5MTgwNDEwMn0.q3F9dEDdNQ7kBGtReTQx6r8wvgGks5lL-ThZAi2uPEY';
 const WEBHOOK_A  = 'https://vinsnap-init-gdsqg4fv7q-uc.a.run.app/';
-const WEBHOOK_B  = 'https://vinsnap-processdev-gdsqg4fv7q-uc.a.run.app/';
+const WEBHOOK_B  = 'https://vinsnap-process-gdsqg4fv7q-uc.a.run.app/';
 const GCS_BUCKET = 'vinsnap-store';
 const TURNSTILE_SITE_KEY = '0x4AAAAAADofEaJCDdqf1MWY'; // ← replace with the Site Key from Cloudflare Turnstile dashboard
 const { createClient } = window.supabase;
@@ -1264,10 +1265,11 @@ let avatarCountry  = 'india';
 let locationVariant = '';
 let genMode        = 'dynamic';
 let templateId     = '';
-let templatePoseIds = []; // up to MAX_TEMPLATE_POSES pose_ids — one generated image per pose
+let templateType   = 'single'; // 'single' (seller picks 1-MAX_TEMPLATE_POSES poses, one image per pose — nothing generated automatically) | 'grid' (exactly 1 image, no poses)
+let templatePoseIds = []; // the pose_ids the seller explicitly checked — one generated image per pose, capped at MAX_TEMPLATE_POSES
 const MAX_TEMPLATE_POSES = 4;
-let TEMPLATES_BY_CAT = {}; // { category: [{id,name,thumb}] } — loaded from templates_manifest.json
-let TEMPLATE_POSES   = []; // [{id,label}] — loaded from template_poses_manifest.json
+let TEMPLATES_BY_CAT = {}; // { category: [{id,name,thumb,type}] } — loaded from templates_manifest.json
+let TEMPLATE_POSES_BY_TPL = {}; // { template_id: [{id,label}] } — loaded from template_poses_manifest.json, filtered per-template now (not global)
 let _userCredits   = null; // { credits_remaining, credits_reserved, plan_name, expires_at }
 
 // ══ SUBCATEGORY MAP ══════════════════════════════════════════════════
@@ -1764,7 +1766,7 @@ function onCatChange() {
     o.textContent = SUBCAT_LABELS[s] || s.replace(/_/g,' ').replace(/\w/g, c=>c.toUpperCase());
     sub.appendChild(o);
   });
-  if (genMode === 'template') { templateId = ''; templatePoseIds = []; renderTemplates(); }
+  if (genMode === 'template') { templateId = ''; templateType = 'single'; templatePoseIds = []; renderTemplates(); }
   checkReady();
 }
 
@@ -1837,16 +1839,29 @@ function getTypes() {
 }
 
 // ══ COUNT BANNER ═════════════════════════════════════════════════════
+// Returns how many images are generated PER uploaded photo for the current
+// template selection: grid = always 1, no poses. single = exactly the number
+// of poses selected (1-4) — no automatic hero/front/side/back anymore; add
+// those as regular selectable poses in the Excel if you want them.
+function _templateShotCount() {
+  if (templateType === 'grid') return templateId ? 1 : 0;
+  return templateId ? templatePoseIds.length : 0;
+}
+
 function updateCounter() {
   const imgs = uploads.length;
-  const types = genMode === 'template' ? templatePoseIds.length : getTypes().length;
+  const types = genMode === 'template' ? _templateShotCount() : getTypes().length;
   const total = imgs*types;
   const b=document.getElementById('countBanner');
   if (total>0) {
     b.classList.remove('hidden');
     document.getElementById('countNum').textContent  = total;
-    const typeLbl = genMode === 'template' ? 'pose' : 'type';
-    document.getElementById('countBreak').textContent = `${imgs} image${imgs!==1?'s':''} × ${types} ${typeLbl}${types!==1?'s':''}`;
+    const breakdown = genMode === 'template'
+      ? (templateType === 'grid'
+          ? `${imgs} image${imgs!==1?'s':''} × 1 grid image`
+          : `${imgs} image${imgs!==1?'s':''} × ${templatePoseIds.length} pose${templatePoseIds.length!==1?'s':''}`)
+      : `${imgs} image${imgs!==1?'s':''} × ${types} type${types!==1?'s':''}`;
+    document.getElementById('countBreak').textContent = breakdown;
   } else b.classList.add('hidden');
 }
 
@@ -1858,8 +1873,9 @@ function setMode(m) {
   document.getElementById('modeTpl').classList.toggle('on', m==='template');
   document.getElementById('customPanel').style.display   = m==='custom'   ? 'block' : 'none';
   document.getElementById('templatePanel').style.display = m==='template' ? 'block' : 'none';
-  // Templates mode: hero/lifestyle1-3 selection doesn't apply — pose selection
-  // replaces it entirely (one generated image per selected pose, no hero shot).
+  // Templates mode: hero/lifestyle1-3 checkboxes don't apply — 'single' templates
+  // generate one image per pose the seller explicitly picks (see templateModeNote),
+  // 'grid' templates generate exactly 1 image. Card stays hidden either way.
   document.getElementById('imageTypesCard').style.display = m==='template' ? 'none' : 'block';
   if (m==='dynamic') { avatarId='dynamic'; avatarCountry='india'; locationVariant=''; }
   if (m==='template') { renderTemplates(); renderTemplatePoses(); }
@@ -1873,7 +1889,7 @@ async function loadTemplateManifest() {
   try {
     const r = await fetch('https://storage.googleapis.com/vinsnap-store/config/templates_manifest.json', {cache:'no-store'});
     if (!r.ok) throw new Error('HTTP '+r.status);
-    TEMPLATES_BY_CAT = await r.json(); // { womens_fashion: [{id,name,thumb}], ... }
+    TEMPLATES_BY_CAT = await r.json(); // { womens_fashion: [{id,name,thumb,type}], ... } — type: 'single'|'grid'
   } catch(e) {
     console.warn('template manifest load failed:', e);
     TEMPLATES_BY_CAT = {};
@@ -1881,14 +1897,22 @@ async function loadTemplateManifest() {
   try {
     const r2 = await fetch('https://storage.googleapis.com/vinsnap-store/config/template_poses_manifest.json', {cache:'no-store'});
     if (!r2.ok) throw new Error('HTTP '+r2.status);
-    TEMPLATE_POSES = await r2.json(); // [{id,label}, ...]
+    TEMPLATE_POSES_BY_TPL = await r2.json(); // { template_id: [{id,label}], ... } — per-template, not global
   } catch(e) {
     console.warn('template poses manifest load failed:', e);
-    TEMPLATE_POSES = [];
+    TEMPLATE_POSES_BY_TPL = {};
   }
   if (genMode === 'template') { renderTemplates(); renderTemplatePoses(); }
 }
 document.addEventListener('DOMContentLoaded', loadTemplateManifest);
+
+function _findTemplateMeta(id) {
+  for (const cat in TEMPLATES_BY_CAT) {
+    const hit = (TEMPLATES_BY_CAT[cat] || []).find(t => t.id === id);
+    if (hit) return hit;
+  }
+  return null;
+}
 
 function renderTemplates() {
   const cat   = document.getElementById('catSel').value;
@@ -1901,6 +1925,7 @@ function renderTemplates() {
     empty.textContent = 'Select a category above to see available templates.';
     empty.style.display = 'block';
     document.getElementById('templatePoseWrap').style.display = 'none';
+    document.getElementById('templateModeNote').style.display = 'none';
     return;
   }
 
@@ -1909,6 +1934,7 @@ function renderTemplates() {
     empty.textContent = 'No templates available for this category yet.';
     empty.style.display = 'block';
     document.getElementById('templatePoseWrap').style.display = 'none';
+    document.getElementById('templateModeNote').style.display = 'none';
     return;
   }
   empty.style.display = 'none';
@@ -1916,10 +1942,16 @@ function renderTemplates() {
   list.forEach(t => {
     const d = document.createElement('div');
     d.className = 'loc-card' + (t.id === templateId ? ' on' : '');
-    d.style.padding = '0'; d.style.overflow = 'hidden';
+    d.style.padding = '0'; d.style.overflow = 'hidden'; d.style.position = 'relative';
     d.onclick = () => selectTemplate(d, t.id);
+    const gridBadge = t.type === 'grid'
+      ? `<span style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;font-size:.62rem;font-weight:700;padding:2px 6px;border-radius:10px;letter-spacing:.03em">GRID</span>`
+      : '';
     d.innerHTML =
-        `<img src="${t.thumb}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block" loading="lazy" onerror="this.style.display='none'">`
+        `<div style="position:relative">`
+      + `<img src="${t.thumb}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block" loading="lazy" onerror="this.style.display='none'">`
+      + gridBadge
+      + `</div>`
       + `<div style="padding:6px 4px;font-size:11px;font-weight:600">${t.name}</div>`;
     grid.appendChild(d);
   });
@@ -1929,29 +1961,47 @@ function selectTemplate(el, id) {
   document.querySelectorAll('#templateGrid .loc-card').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
   templateId = id;
-  document.getElementById('templatePoseWrap').style.display = 'block';
-  renderTemplatePoses();
+  templatePoseIds = []; // reset pose selections when switching templates
+  const meta = _findTemplateMeta(id);
+  templateType = (meta && meta.type === 'grid') ? 'grid' : 'single';
+
+  const wrap = document.getElementById('templatePoseWrap');
+  const note = document.getElementById('templateModeNote');
+  if (templateType === 'grid') {
+    // Grid templates: exactly 1 image, no pose picker.
+    wrap.style.display = 'none';
+    note.style.display = 'block';
+    note.textContent = '✨ This is a grid template — selecting it generates exactly 1 finished image, no pose selection needed.';
+  } else {
+    wrap.style.display = 'block';
+    note.style.display = 'block';
+    note.textContent = '🧍 Select 1–4 poses below — each selected pose generates one image.';
+    renderTemplatePoses();
+  }
+  updateCounter();
   checkReady();
   updateSummaryBar();
 }
+
 
 function renderTemplatePoses() {
   const wrap  = document.getElementById('templatePoseWrap');
   const grid  = document.getElementById('templatePoseGrid');
   const empty = document.getElementById('templatePoseEmpty');
   if (!wrap || !grid || !empty) return;
-  if (!templateId) { wrap.style.display = 'none'; return; }
+  if (!templateId || templateType === 'grid') { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
   grid.innerHTML = '';
 
-  if (!TEMPLATE_POSES.length) {
+  const poses = TEMPLATE_POSES_BY_TPL[templateId] || [];
+  if (!poses.length) {
     empty.style.display = 'block';
     _updatePoseCounter();
     return;
   }
   empty.style.display = 'none';
 
-  TEMPLATE_POSES.forEach(p => {
+  poses.forEach(p => {
     const checked = templatePoseIds.includes(p.id);
     const d = document.createElement('label');
     d.className = 'tycb' + (checked ? ' on' : '');
@@ -1992,6 +2042,14 @@ function _updatePoseCounter() {
   el.style.color = templatePoseIds.length >= MAX_TEMPLATE_POSES ? 'var(--green)' : 'var(--accent)';
 }
 
+function _findPoseLabel(poseId) {
+  for (const tid in TEMPLATE_POSES_BY_TPL) {
+    const hit = (TEMPLATE_POSES_BY_TPL[tid] || []).find(p => p.id === poseId);
+    if (hit) return hit.label;
+  }
+  return null;
+}
+
 // ══ AVATAR FUNCTIONS (minimal — only what's needed) ══════════════════
 function selectCountry(el) {
   document.querySelectorAll('.av-country-tab').forEach(t=>t.classList.remove('on'));
@@ -2028,7 +2086,7 @@ function selectLoc(el) {
 function checkReady() {
   const deliveryEmail = (document.getElementById('emailDisp').value || '').trim();
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(deliveryEmail);
-  const typeCount = genMode === 'template' ? templatePoseIds.length : getTypes().length;
+  const typeCount = genMode === 'template' ? _templateShotCount() : getTypes().length;
   const creditsNeeded = uploads.length * typeCount;
 
   // Update credit cost display
@@ -2044,7 +2102,9 @@ function checkReady() {
   }
 
   const hasCredits = !user || !_userCredits || _userCredits.credits_remaining >= creditsNeeded;
-  const templateOk = genMode !== 'template' || (!!templateId && templatePoseIds.length > 0);
+  // Poses are the ONLY selectable images for 'single' templates — at least 1
+  // required. Grid templates just need a template selected, nothing further.
+  const templateOk = genMode !== 'template' || (!!templateId && (templateType === 'grid' || templatePoseIds.length > 0));
   const ok = user &&
     uploads.length > 0 &&
     document.getElementById('catSel').value &&
@@ -2109,11 +2169,13 @@ function updateSummaryBar() {
     const t = (TEMPLATES_BY_CAT[cat] || []).find(x => x.id === templateId);
     templateName = t ? t.name : templateId;
   }
-  // Get selected pose display names (up to MAX_TEMPLATE_POSES)
+  // Get selected pose display names (up to MAX_TEMPLATE_POSES) — every image
+  // generated for a 'single' template comes from one of these picks; N/A for grid templates
   let poseNames = '—';
-  if (mode === 'template' && templatePoseIds.length) {
+  if (mode === 'template' && templateType === 'single' && templatePoseIds.length) {
+    const tplPoses = TEMPLATE_POSES_BY_TPL[templateId] || [];
     poseNames = templatePoseIds
-      .map(id => { const p = TEMPLATE_POSES.find(x => x.id === id); return p ? p.label : id; })
+      .map(id => { const p = tplPoses.find(x => x.id === id); return p ? p.label : id; })
       .join(', ');
   }
 
@@ -2128,7 +2190,8 @@ function updateSummaryBar() {
     (mode === 'custom' ? chip('🧑 Avatar', avatarName, avatarName !== '—') : '') +
     (mode === 'custom' ? chip('📍 Location', locName !== '—' ? locName : 'Not selected', locName !== '—') : '') +
     (mode === 'template' ? chip('🖼️ Template', templateName, templateName !== '—') : '') +
-    (mode === 'template' ? chip(`🧍 Poses (${templatePoseIds.length}/${MAX_TEMPLATE_POSES})`, poseNames, poseNames !== '—') : '');
+    (mode === 'template' && templateType === 'grid' ? chip('🧩 Shots', '1 grid image', true) : '') +
+    (mode === 'template' && templateType === 'single' ? chip(`🧍 Poses (${templatePoseIds.length}/${MAX_TEMPLATE_POSES})`, poseNames !== '—' ? poseNames : 'Not selected', poseNames !== '—') : '');
 
   // Show bar only when there's something meaningful
   const hasAny = imgCount > 0 || productName || catEl.value;
@@ -2140,20 +2203,27 @@ async function doSubmit() {
   const name  = document.getElementById('productName').value.trim();
   const cat   = document.getElementById('catSel').value;
   const sub   = document.getElementById('subSel').value;
-  // Templates mode: "types" being generated ARE the selected poses (max 4),
-  // hero/lifestyle1-3 don't apply and their checkboxes are hidden entirely.
-  const types = genMode === 'template' ? templatePoseIds.slice() : getTypes();
+  // Templates mode: 'grid' templates generate exactly 1 self-contained image.
+  // 'single' templates generate ONE image PER selected pose (1-4) — no
+  // automatic hero/front/side/back. hero/lifestyle checkboxes are hidden
+  // entirely and don't apply in either template case.
+  let types;
+  if (genMode === 'template') {
+    types = templateType === 'grid' ? ['grid'] : templatePoseIds.slice();
+  } else {
+    types = getTypes();
+  }
   const deliveryEmail = (document.getElementById('emailDisp').value || '').trim();
   document.getElementById('submitErr').textContent = '';
   if (!uploads.length) { showErr('Please upload at least one image.'); return; }
   if (!cat)            { showErr('Please select a category.'); return; }
-  if (genMode==='template' && !types.length) { showErr('Please select at least one pose.'); return; }
   if (genMode!=='template' && !types.length) { showErr('Please select at least one image type.'); return; }
+  if (genMode==='template' && templateType==='single' && !types.length) { showErr('Please select at least one pose.'); return; }
   if (!name)           { showErr('Please enter a product name.'); return; }
   if (!deliveryEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(deliveryEmail)) { showErr('Please enter a valid delivery email address.'); return; }
   if (genMode==='custom' && !locationVariant) { showErr('Please select a location in Custom mode.'); return; }
   if (genMode==='template' && !templateId)    { showErr('Please select a template.'); return; }
-  if (genMode==='template' && types.length > MAX_TEMPLATE_POSES) { showErr(`Maximum ${MAX_TEMPLATE_POSES} poses allowed.`); return; }
+  if (genMode==='template' && templatePoseIds.length > MAX_TEMPLATE_POSES) { showErr(`Maximum ${MAX_TEMPLATE_POSES} poses allowed.`); return; }
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
@@ -2166,8 +2236,9 @@ async function doSubmit() {
     locationVariant: genMode==='custom' ? 'dynamic'       : 'dynamic',
     customLocation:  genMode==='custom' ? locationVariant : '',
     templateId:      genMode==='template' ? templateId       : '',
-    // Array of chosen pose_ids (up to 4) — backend generates exactly one
-    // image per pose per uploaded product photo, keyed "{imgIndex}_{pose_id}".
+    templateType:    genMode==='template' ? templateType     : '', // 'single' | 'grid' — backend re-verifies against Excel, this is just a hint
+    // Array of chosen pose_ids (up to MAX_TEMPLATE_POSES) — the ONLY images generated for
+    // 'single' templates, one per pose. Empty/unused for 'grid' templates.
     templatePoseIds: genMode==='template' ? templatePoseIds  : [],
     selectedTypes: types,
     imageCount: uploads.length
@@ -2297,7 +2368,7 @@ function startNewJob() {
   _currentJobId = null;
   _currentImages = [];
   try { localStorage.removeItem('vs_active_job'); } catch(e) {}
-  uploads=[]; avatarId='dynamic'; avatarCountry='india'; locationVariant=''; genMode='dynamic'; templateId=''; templatePoseIds=[];
+  uploads=[]; avatarId='dynamic'; avatarCountry='india'; locationVariant=''; genMode='dynamic'; templateId=''; templateType='single'; templatePoseIds=[];
   document.getElementById('thumbGrid').innerHTML = '';
   document.getElementById('productName').value   = '';
   document.getElementById('catSel').value        = '';
@@ -2430,7 +2501,7 @@ function showDoneSection(job) {
 
   const container = document.getElementById('imageLinks');
   container.innerHTML = '';
-  const typeLabels = { hero:'Hero', lifestyle1:'Lifestyle 1', lifestyle2:'Lifestyle 2', lifestyle3:'Lifestyle 3' };
+  const typeLabels = { hero:'Hero', lifestyle1:'Front', lifestyle2:'Side', lifestyle3:'Back', grid:'Grid Image' };
 
   if (successImages.length === 0) {
     container.innerHTML = '<div style="font-size:.82rem;color:var(--dim)">Images are processing — check back in a moment, or see My Jobs tab.</div>';
@@ -2445,7 +2516,7 @@ function showDoneSection(job) {
     const pName  = (_currentProductName || 'product').replace(/[^a-zA-Z0-9 ]/g,'').trim().replace(/ +/g,'_').slice(0,25) || 'product';
     const imgNum = img.image_num || img.imageNum || (parseInt(imgIdx)+1);
     const fname  = `${pName}_${shotType||'img'}${imgNum > 1 ? '_img'+imgNum : ''}.jpg`;
-    const poseLbl = (TEMPLATE_POSES.find(p => p.id === shotType) || {}).label;
+    const poseLbl = _findPoseLabel(shotType);
     const label  = `${typeLabels[shotType] || poseLbl || (shotType ? shotType : 'Image '+(parseInt(imgIdx)+1))}`;
     const tile = document.createElement('div');
     tile.className = 'jtile';
@@ -2879,8 +2950,8 @@ function renderJob(job) {
     const su = jEsc(url);
     const sType  = img.shot_type || img.shotType || img.type || '';
     const sNum   = img.image_num || img.imageNum || (i+1);
-    const SLBL   = {hero:'Hero',lifestyle1:'Lifestyle 1',lifestyle2:'Lifestyle 2',lifestyle3:'Lifestyle 3'};
-    const poseLbl = (TEMPLATE_POSES.find(p => p.id === sType) || {}).label;
+    const SLBL   = {hero:'Hero',lifestyle1:'Front',lifestyle2:'Side',lifestyle3:'Back',grid:'Grid Image'};
+    const poseLbl = _findPoseLabel(sType);
     const tLabel = SLBL[sType] || poseLbl || (sType ? sType : 'Image ' + (i+1));
     const pn     = (name||'product').replace(/[^a-zA-Z0-9 ]/g,'').trim().replace(/ +/g,'_').slice(0,25);
     const dlName = pn + '_' + (sType||'img') + (sNum > 1 ? '_img'+sNum : '') + '.jpg';
