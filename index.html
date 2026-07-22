@@ -538,7 +538,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-
       </div>
       <div class="fg" style="margin:0">
         <label class="lbl">Subcategory</label>
-        <select class="sel" id="subSel" onchange="checkReady()">
+        <select class="sel" id="subSel" onchange="onSubChange()">
           <option value="">Select subcategory…</option>
         </select>
       </div>
@@ -1770,6 +1770,15 @@ function onCatChange() {
   checkReady();
 }
 
+function onSubChange() {
+  // Subcategory changed within the same category — re-filter the template
+  // grid (e.g. Men's Fashion → Formal Shirt should hide Kurta/Sherwani
+  // templates) and clear any previously selected template/pose since it may
+  // no longer be valid for the new subcategory.
+  if (genMode === 'template') { templateId = ''; templateType = 'single'; templatePoseIds = []; renderTemplates(); }
+  checkReady();
+}
+
 // ══ UPLOAD ═══════════════════════════════════════════════════════════
 function onDrop(e) {
   e.preventDefault();
@@ -1929,9 +1938,18 @@ function renderTemplates() {
     return;
   }
 
-  const list = TEMPLATES_BY_CAT[cat] || [];
+  const sub  = document.getElementById('subSel').value;
+  const all  = TEMPLATES_BY_CAT[cat] || [];
+  // Filter to the selected subcategory. Templates with no subcategory set in
+  // Excel are treated as generic/category-wide and shown regardless of which
+  // subcategory is picked (or when no subcategory is selected yet).
+  const list = sub
+    ? all.filter(t => !t.subcategory || t.subcategory === sub)
+    : all;
   if (!list.length) {
-    empty.textContent = 'No templates available for this category yet.';
+    empty.textContent = sub
+      ? 'No templates available for this subcategory yet.'
+      : 'No templates available for this category yet.';
     empty.style.display = 'block';
     document.getElementById('templatePoseWrap').style.display = 'none';
     document.getElementById('templateModeNote').style.display = 'none';
